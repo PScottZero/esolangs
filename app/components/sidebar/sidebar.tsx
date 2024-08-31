@@ -6,8 +6,11 @@ import Image from "next/image";
 import styles from "./sidebar.module.scss";
 import { useRouter } from "next/navigation";
 
-function esolang(label: string, id?: string): ReactElement {
-  const router = useRouter();
+function esolang(
+  router: AppRouterInstance,
+  label: string,
+  id?: string
+): ReactElement {
   id = id ?? label.toLowerCase();
   return (
     <div className={styles.outerEsolang} onClick={() => router.push(`/${id}`)}>
@@ -27,12 +30,13 @@ function esolang(label: string, id?: string): ReactElement {
 }
 
 export default function Sidebar() {
+  const router = useRouter();
   return (
     <div className={styles.sidebar}>
-      {esolang("Beatnik")}
-      {esolang("Brainfuck")}
-      {esolang("Piet")}
-      {esolang("Shakes- peare", "shakespeare")}
+      {esolang(router, "Beatnik")}
+      {esolang(router, "Brainfuck")}
+      {esolang(router, "Piet")}
+      {esolang(router, "Shakes- peare", "shakespeare")}
     </div>
   );
 }
