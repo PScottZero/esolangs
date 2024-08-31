@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 
 type WindowProps = {
   title: string;
+  actions?: Map<string, () => void>;
   gridArea?: string;
   children?: React.ReactNode;
 };
@@ -51,7 +52,30 @@ function TitleBarButtons(): ReactElement {
   );
 }
 
-export default function Window({ title, gridArea, children }: WindowProps) {
+type ActionProps = {
+  name: string;
+  func: () => void;
+};
+
+function Action({ name, func }: ActionProps): ReactElement {
+  return (
+    <span onClick={func} className={styles.action}>
+      <u>{name.substring(0, 1)}</u>
+      {name.substring(1)}
+    </span>
+  );
+}
+
+export default function Window({
+  title,
+  actions,
+  gridArea,
+  children,
+}: WindowProps) {
+  const actionEls: ReactElement[] = [];
+  actions?.forEach((func: () => void, name: string) => {
+    actionEls.push(<Action key={name} name={name} func={func} />);
+  });
   return (
     <div
       className={styles.outerWindow}
@@ -70,6 +94,7 @@ export default function Window({ title, gridArea, children }: WindowProps) {
           </div>
           <TitleBarButtons />
         </div>
+        <div className={styles.actions}>{actionEls}</div>
         <div className={styles.outerContent}>
           <div className={styles.innerContent}>{children}</div>
         </div>

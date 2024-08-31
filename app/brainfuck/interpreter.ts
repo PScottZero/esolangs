@@ -1,12 +1,15 @@
+import { Dispatch, SetStateAction } from "react";
 import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x100000;
 const PROG_SIZE = 0x10000;
 const INPUT_SIZE = 0x1000;
 
-const OPS_PER_ANIM_REQ = 25;
+const OPS_PER_ANIM_REQ = 1000;
 
-class BrainfuckInterpreter {
+const OP_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
+
+export class BrainfuckInterpreter {
   data: Uint8Array;
   dataPtr: number;
 
@@ -16,9 +19,11 @@ class BrainfuckInterpreter {
   input: Uint8Array;
   inputPtr: number;
 
+  output: string;
+  setOutput: Dispatch<SetStateAction<string>>;
   running: boolean;
 
-  constructor() {
+  constructor(setOutput: Dispatch<SetStateAction<string>>) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
@@ -28,42 +33,85 @@ class BrainfuckInterpreter {
     this.input = createBytes(INPUT_SIZE);
     this.inputPtr = 0;
 
+    this.output = "";
+    this.setOutput = setOutput;
     this.running = false;
   }
 
   reset() {
+    this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
+
+    this.prog = createBytes(PROG_SIZE);
     this.progPtr = 0;
+
     this.inputPtr = 0;
+
+    this.output = "";
     this.running = true;
   }
 
   run() {
-    for (let i = 0; i < OPS_PER_ANIM_REQ && this.running; i++) {
+    for (let i = 0; i < OPS_PER_ANIM_REQ; i++) {
       this.step();
-      if (!this.running) return;
+      if (!this.running) {
+        console.log("Terminated");
+        return;
+      }
     }
     requestAnimationFrame(() => this.run());
   }
 
-  ops = new Map<string, () => void>([
-    [">", this.incDataPtr],
-    ["<", this.decDataPtr],
-    ["+", this.incData],
-    ["-", this.decData],
-    [".", this.out],
-    [",", this.in],
-    ["[", this.loopStart],
-    ["]", this.loopEnd],
-  ]);
+  load(programText: string, inputText: string) {
+    this.reset();
+
+    for (const ch of programText) {
+      if (OP_CHARS.includes(ch) && this.progPtr < PROG_SIZE) {
+        this.prog[this.progPtr++] = ch.charCodeAt(0);
+      }
+    }
+    this.progPtr = 0;
+
+    for (const ch of inputText) {
+      const chCode = ch.charCodeAt(0);
+      if (chCode < 256) {
+        this.input[this.inputPtr++] = chCode;
+      }
+    }
+    this.inputPtr = 0;
+  }
 
   step() {
     const op = String.fromCharCode(this.prog[this.progPtr++]);
-    if (op in this.ops) {
-      this.ops.get(op)!();
-    } else {
-      console.log(`invalid op: ${op}`);
-      this.running = false;
+    switch (op) {
+      case ">":
+        this.incDataPtr();
+        break;
+      case "<":
+        this.decDataPtr();
+        break;
+      case "+":
+        this.incData();
+        break;
+      case "-":
+        this.decData();
+        break;
+      case ".":
+        this.out();
+        break;
+      case ",":
+        this.in();
+        break;
+      case "[":
+        this.loopStart();
+        break;
+      case "]":
+        this.loopEnd();
+        break;
+      default:
+        console.log(`invalid op: ${op}`);
+        this.running = false;
+        break;
     }
   }
 
@@ -86,7 +134,8 @@ class BrainfuckInterpreter {
   }
 
   out() {
-    console.log(String.fromCharCode(this.data[this.dataPtr]));
+    this.output += String.fromCharCode(this.data[this.dataPtr]);
+    if (this.setOutput !== undefined) this.setOutput(this.output);
   }
 
   in() {
