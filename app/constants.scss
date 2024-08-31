@@ -1,10 +1,10 @@
 $border-size: 2px;
-$background-gray: #c0c4c8;
-$background-gray-alt: #e0e0e0;
-$background-green: #54a8a8;
-$title-bar-color: #0000a8;
-$border1: $border-size solid #fcfcfc;
-$border2: $border-size solid #84888c;
+$blue: #0000a8;
+$green: #54a8a8;
+$white: #fcfcfc;
+$gray: #c0c4c8;
+$dark-gray: #84888c;
+$black: #050A0A;
 $title-bar-gap-size: 0.25rem;
 $gap-size: 1rem;
 
@@ -14,18 +14,17 @@ $gap-size: 1rem;
   align-items: center;
 }
 
-@mixin win95-style {
-  background: $background-gray;
-  border-top: $border1;
-  border-left: $border1;
-  border-bottom: $border2;
-  border-right: $border2;
+@mixin top-left-border($color) {
+  border-top: $border-size solid $color;
+  border-left: $border-size solid $color;
 }
 
-@mixin win95-style-alt {
-  background: $background-gray-alt;
-  border-top: $border2;
-  border-left: $border2;
-  border-bottom: $border1;
-  border-right: $border1;
+@mixin bottom-right-border($color) {
+  border-bottom: $border-size solid $color;
+  border-right: $border-size solid $color;
+}
+
+@mixin two-color-border($color1, $color2) {
+  @include top-left-border($color1);
+  @include bottom-right-border($color2);
 }
