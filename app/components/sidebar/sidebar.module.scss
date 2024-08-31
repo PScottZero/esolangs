@@ -8,7 +8,6 @@
 }
 
 .outerEsolang {
-  
   margin-bottom: 0.5rem;
 }
 
@@ -20,8 +19,10 @@
   font-family: inherit;
   font-size: 1rem;
   width: 100%;
-  
+  color: $black;
   background: $gray;
+  text-align: center;
+  line-height: 0.9;
   aspect-ratio: 1;
 
   div {
@@ -41,7 +42,7 @@
 
 .outerEsolang:not(:active) {
   @include bottom-right-border($black);
-  
+
   .innerEsolang {
     @include two-color-border($white, $dark-gray);
     cursor: pointer;
@@ -50,11 +51,9 @@
 
 .outerEsolang:active {
   @include top-left-border($black);
-  
+
   .innerEsolang {
     @include two-color-border($dark-gray, $white);
     cursor: pointer;
   }
 }
-
-
