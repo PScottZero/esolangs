@@ -1,0 +1,6 @@
+@import "./constants.scss";
+
+.content {
+  grid-area: content;
+  background: $background-green;
+}

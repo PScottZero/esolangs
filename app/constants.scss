@@ -1,0 +1,31 @@
+$border-size: 2px;
+$background-gray: #c0c4c8;
+$background-gray-alt: #e0e0e0;
+$background-green: #54a8a8;
+$title-bar-color: #0000a8;
+$border1: $border-size solid #fcfcfc;
+$border2: $border-size solid #84888c;
+$title-bar-gap-size: 0.25rem;
+$gap-size: 1rem;
+
+@mixin flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin win95-style {
+  background: $background-gray;
+  border-top: $border1;
+  border-left: $border1;
+  border-bottom: $border2;
+  border-right: $border2;
+}
+
+@mixin win95-style-alt {
+  background: $background-gray-alt;
+  border-top: $border2;
+  border-left: $border2;
+  border-bottom: $border1;
+  border-right: $border1;
+}

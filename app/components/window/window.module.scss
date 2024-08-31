@@ -1,0 +1,78 @@
+@import "./../../constants.scss";
+
+.outerWindow {
+  border-top: $border-size solid $background-gray;
+  border-left: $border-size solid $background-gray;
+  border-bottom: $border-size solid black;
+  border-right: $border-size solid black;
+}
+
+.innerWindow {
+  @include win95-style;
+  display: grid;
+  grid-template-areas: "titleBar" "content";
+  grid-template-rows: 2rem 1fr;
+  grid-template-columns: 1fr;
+  height: 100%;
+  padding: 3px;
+}
+
+.titleBar {
+  grid-area: titleBar;
+  background: $title-bar-color;
+}
+
+.title {
+  float: left;
+  color: white;
+  margin-left: $title-bar-gap-size;
+  margin-top: $title-bar-gap-size;
+  font-weight: bold;
+  height: 1.5rem;
+  line-height: 1.5rem;
+
+  p {
+    float: left;
+    margin-left: $title-bar-gap-size;
+  }
+
+  img {
+    float: left;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+.titleBarButtons {
+  float: right;
+  display: flex;
+  flex-direction: row;
+  margin-top: $title-bar-gap-size;
+  margin-right: $title-bar-gap-size;
+
+  div:nth-child(3) {
+    img {
+      width: 0.9rem;
+    }
+  }
+}
+
+.titleBarButton {
+  @include flex-center;
+  @include win95-style;
+  height: 1.5rem;
+  width: 1.6rem;
+
+  img {
+    width: 1rem;
+    height: auto;
+  }
+}
+
+.titleBarButton:nth-child(3) {
+  margin-left: $title-bar-gap-size;
+}
+
+.content {
+  grid-area: content;
+}

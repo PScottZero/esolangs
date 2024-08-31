@@ -1,0 +1,24 @@
+@font-face {
+  font-family: "win95";
+  src: url("/W95FA.otf");
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  width: 100vw;
+  height: 100vh;
+  font-family: "win95", serif;
+}
+
+body {
+  display: grid;
+  grid-template-areas: "sidebar content";
+  grid-template-rows: 1fr;
+  grid-template-columns: 6rem 1fr;
+}
