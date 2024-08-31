@@ -15,7 +15,12 @@ function esolang(
     <div className={styles.outerEsolang} onClick={() => router.push(`/${id}`)}>
       <div className={styles.innerEsolang}>
         <div>
-          <Image src={`/icons/${id}.png`} alt={id} width={128} height={96} />
+          <Image
+            src={`/esolangs/icons/${id}.png`}
+            alt={id}
+            width={128}
+            height={96}
+          />
           <p>{label}</p>
         </div>
       </div>

@@ -25,7 +25,7 @@ function TitleBarButtons(): ReactElement {
     <span className={styles.titleBarButtons}>
       <TitleBarButton>
         <Image
-          src="/icons/minimize.png"
+          src="/esolangs/icons/minimize.png"
           alt="minimize"
           width={32}
           height={32}
@@ -33,14 +33,19 @@ function TitleBarButtons(): ReactElement {
       </TitleBarButton>
       <TitleBarButton>
         <Image
-          src="/icons/maximize.png"
+          src="/esolangs/icons/maximize.png"
           alt="maximize"
           width={32}
           height={32}
         />
       </TitleBarButton>
       <TitleBarButton>
-        <Image src="/icons/close.png" alt="close" width={32} height={28} />
+        <Image
+          src="/esolangs/icons/close.png"
+          alt="close"
+          width={32}
+          height={28}
+        />
       </TitleBarButton>
     </span>
   );
@@ -56,7 +61,7 @@ export default function Window({ title, gridArea, children }: WindowProps) {
         <div className={styles.titleBar}>
           <div className={styles.title}>
             <Image
-              src="/icons/window-icon.png"
+              src="/esolangs/icons/window-icon.png"
               alt="window icon"
               width={32}
               height={32}
