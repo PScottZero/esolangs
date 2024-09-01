@@ -37,33 +37,27 @@ const DEFAULT_INPUT = "Uryyb Jbeyq!";
 export default function Brainfuck() {
   const loadRef = useRef<HTMLInputElement>(null);
   const saveRef = useRef<HTMLAnchorElement>(null);
+  const progRef = useRef<HTMLTextAreaElement>(null);
+  const dataRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLTextAreaElement>(null);
-
-  const [program, setProgram] = useState<string>(DEFAULT_PROG);
-  const [input, setInput] = useState<string>(DEFAULT_INPUT);
-
-  const _setOutput = () => {
-    outputRef.current!.value = interpreter.output;
-    outputRef.current!.scrollTop = outputRef.current!.scrollHeight;
-  };
-
-  const [interpreter, setInterpreter] = useState<BrainfuckInterpreter>(
-    new BrainfuckInterpreter(_setOutput)
+  const interpreter = useRef<BrainfuckInterpreter>(
+    new BrainfuckInterpreter(outputRef)
   );
 
   const run = async () => {
+    await interpreter.current!.stop();
+    interpreter.current!.load(
+      progRef.current!.value.trim(),
+      inputRef.current!.value.trim()
+    );
     console.log("Running");
-    interpreter.running = false;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    interpreter.load(program.trim(), input.trim());
-    interpreter.run();
-    setInterpreter(interpreter);
-    _setOutput();
+    interpreter.current!.run();
   };
 
-  const terminate = () => {
-    interpreter.running = false;
-    setInterpreter(interpreter);
+  const stop = async () => {
+    await interpreter.current!.stop();
+    interpreter.current!.running = false;
   };
 
   const chooseFile = () => {
@@ -73,19 +67,21 @@ export default function Brainfuck() {
   const load = (e: ChangeEvent<HTMLInputElement>) => {
     const reader = new FileReader();
     reader.onload = async () => {
-      setProgram(reader.result as string);
+      progRef.current!.value = reader.result as string;
     };
     reader.readAsText(e.target.files![0]);
   };
 
   const save = () => {
-    const file = new Blob([program], { type: "text/plain" });
+    const file = new Blob([progRef.current!.value], { type: "text/plain" });
     saveRef.current!.href = URL.createObjectURL(file);
     saveRef.current!.download = "program.b";
     saveRef.current!.click();
   };
 
   useEffect(() => {
+    progRef.current!.value = DEFAULT_PROG;
+    inputRef.current!.value = DEFAULT_INPUT;
     run();
   }, []);
 
@@ -98,24 +94,36 @@ export default function Brainfuck() {
             ["Load", chooseFile],
             ["Save", save],
             ["Run", run],
-            ["Terminate", terminate],
+            ["Stop", stop],
           ])
         }
         gridArea="editor"
       >
         <textarea
+          ref={progRef}
           className={styles.textArea}
           name="editor"
-          value={program}
-          onChange={(e) => setProgram(e.target.value)}
+          onChange={(e) => (progRef.current!.value = e.target.value)}
         />
       </Window>
+      {/* <Window
+        title="Debug"
+        actions={
+          new Map([
+            ["Debug", () => {}],
+            ["Step", () => {}],
+            ["Continue", () => {}],
+          ])
+        }
+      >
+        WIP
+      </Window> */}
       <Window title="Input">
         <textarea
+          ref={inputRef}
           className={styles.textArea}
           name="input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => (inputRef.current!.value = e.target.value)}
         />
       </Window>
       <Window title="Output">

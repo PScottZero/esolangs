@@ -4,7 +4,7 @@ const DATA_SIZE = 0x100000;
 const PROG_SIZE = 0x10000;
 const INPUT_SIZE = 0x1000;
 
-const OPS_PER_ANIM_REQ = 2048;
+const OPS_PER_ANIM_REQ = 4096;
 
 const OP_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
 
@@ -18,12 +18,12 @@ export class BrainfuckInterpreter {
   input: Uint8Array;
   inputPtr: number;
 
-  output: string;
-  setOutput: () => void;
+  outputRef: React.RefObject<HTMLTextAreaElement>;
 
   running: boolean;
+  stopped: boolean;
 
-  constructor(setOutput: () => void) {
+  constructor(outputRef: React.RefObject<HTMLTextAreaElement>) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
@@ -33,10 +33,10 @@ export class BrainfuckInterpreter {
     this.input = createBytes(INPUT_SIZE);
     this.inputPtr = 0;
 
-    this.output = "";
-    this.setOutput = setOutput;
+    this.outputRef = outputRef;
 
     this.running = false;
+    this.stopped = true;
   }
 
   reset() {
@@ -48,9 +48,10 @@ export class BrainfuckInterpreter {
 
     this.inputPtr = 0;
 
-    this.output = "";
+    this.outputRef.current!.value = "";
 
     this.running = true;
+    this.stopped = false;
   }
 
   run() {
@@ -58,10 +59,18 @@ export class BrainfuckInterpreter {
       this.step();
       if (!this.running) {
         console.log("Terminated");
+        this.stopped = true;
         return;
       }
     }
     requestAnimationFrame(() => this.run());
+  }
+
+  async stop(): Promise<void> {
+    this.running = false;
+    while (!this.stopped) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
   }
 
   load(programText: string, inputText: string) {
@@ -137,8 +146,10 @@ export class BrainfuckInterpreter {
   }
 
   out() {
-    this.output += String.fromCharCode(this.data[this.dataPtr]);
-    this.setOutput();
+    this.outputRef.current!.value += String.fromCharCode(
+      this.data[this.dataPtr]
+    );
+    this.outputRef.current!.scrollTop = this.outputRef.current!.scrollHeight;
   }
 
   in() {
