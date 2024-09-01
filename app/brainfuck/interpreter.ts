@@ -19,11 +19,11 @@ export class BrainfuckInterpreter {
   inputPtr: number;
 
   output: string;
-  setOutput: (output: string) => void;
+  setOutput: () => void;
 
   running: boolean;
 
-  constructor(setOutput: (output: string) => void) {
+  constructor(setOutput: () => void) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
@@ -84,7 +84,7 @@ export class BrainfuckInterpreter {
   }
 
   step() {
-    const op = String.fromCharCode(this.prog[this.progPtr++]);
+    const op = String.fromCharCode(this.prog[this.progPtr]);
     switch (op) {
       case ">":
         this.incDataPtr();
@@ -115,6 +115,7 @@ export class BrainfuckInterpreter {
         this.running = false;
         break;
     }
+    if (++this.progPtr >= PROG_SIZE) this.progPtr = 0;
   }
 
   incDataPtr() {
@@ -137,7 +138,7 @@ export class BrainfuckInterpreter {
 
   out() {
     this.output += String.fromCharCode(this.data[this.dataPtr]);
-    this.setOutput(this.output);
+    this.setOutput();
   }
 
   in() {
@@ -158,23 +159,17 @@ export class BrainfuckInterpreter {
   }
 
   jumpToMatchingBracket(forward: boolean = true) {
-    let depth = 1;
+    let depth = 0;
     const dir = forward ? 1 : -1;
     const bracket = forward ? "[" : "]";
     const otherBracket = forward ? "]" : "[";
-
-    this.progPtr += forward ? 0 : -2;
 
     while (this.progPtr >= 0 && this.progPtr < PROG_SIZE) {
       const ch = String.fromCharCode(this.prog[this.progPtr]);
       if (ch === bracket) {
         depth++;
       } else if (ch === otherBracket) {
-        depth--;
-        if (depth === 0) {
-          this.progPtr += 1;
-          return;
-        }
+        if (--depth === 0) return;
       }
       this.progPtr += dir;
     }

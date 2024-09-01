@@ -41,10 +41,9 @@ export default function Brainfuck() {
 
   const [program, setProgram] = useState<string>(DEFAULT_PROG);
   const [input, setInput] = useState<string>(DEFAULT_INPUT);
-  const [output, setOutput] = useState<string>("");
 
-  const _setOutput = (output: string) => {
-    setOutput(output);
+  const _setOutput = () => {
+    outputRef.current!.value = interpreter.output;
     outputRef.current!.scrollTop = outputRef.current!.scrollHeight;
   };
 
@@ -59,7 +58,7 @@ export default function Brainfuck() {
     interpreter.load(program.trim(), input.trim());
     interpreter.run();
     setInterpreter(interpreter);
-    setOutput("");
+    _setOutput();
   };
 
   const terminate = () => {
@@ -124,7 +123,6 @@ export default function Brainfuck() {
           ref={outputRef}
           className={styles.textArea}
           name="output"
-          value={output}
           readOnly={true}
         />
       </Window>
