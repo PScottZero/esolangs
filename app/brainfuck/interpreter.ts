@@ -1,11 +1,10 @@
-import { Dispatch, SetStateAction } from "react";
 import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x100000;
 const PROG_SIZE = 0x10000;
 const INPUT_SIZE = 0x1000;
 
-const OPS_PER_ANIM_REQ = 1000;
+const OPS_PER_ANIM_REQ = 2048;
 
 const OP_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
 
@@ -20,10 +19,11 @@ export class BrainfuckInterpreter {
   inputPtr: number;
 
   output: string;
-  setOutput: Dispatch<SetStateAction<string>>;
+  setOutput: (output: string) => void;
+
   running: boolean;
 
-  constructor(setOutput: Dispatch<SetStateAction<string>>) {
+  constructor(setOutput: (output: string) => void) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
@@ -35,6 +35,7 @@ export class BrainfuckInterpreter {
 
     this.output = "";
     this.setOutput = setOutput;
+
     this.running = false;
   }
 
@@ -48,6 +49,7 @@ export class BrainfuckInterpreter {
     this.inputPtr = 0;
 
     this.output = "";
+
     this.running = true;
   }
 
@@ -135,13 +137,12 @@ export class BrainfuckInterpreter {
 
   out() {
     this.output += String.fromCharCode(this.data[this.dataPtr]);
-    if (this.setOutput !== undefined) this.setOutput(this.output);
+    this.setOutput(this.output);
   }
 
   in() {
     if (this.inputPtr < INPUT_SIZE) {
-      const inByte = this.input[this.inputPtr++];
-      this.data[this.dataPtr] = inByte;
+      this.data[this.dataPtr] = this.input[this.inputPtr++];
     } else {
       console.log("end of input");
       this.running = false;
@@ -162,7 +163,7 @@ export class BrainfuckInterpreter {
     const bracket = forward ? "[" : "]";
     const otherBracket = forward ? "]" : "[";
 
-    this.progPtr += forward ? 1 : -2;
+    this.progPtr += forward ? 0 : -2;
 
     while (this.progPtr >= 0 && this.progPtr < PROG_SIZE) {
       const ch = String.fromCharCode(this.prog[this.progPtr]);
