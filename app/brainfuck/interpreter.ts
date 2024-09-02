@@ -1,9 +1,7 @@
 import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x10000;
-
 const OPS_PER_ANIM_REQ = 4096;
-
 const OP_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
 
 export class BrainfuckInterpreter {
@@ -16,13 +14,19 @@ export class BrainfuckInterpreter {
   input: string;
   inputPtr: number;
 
-  outputRef: React.RefObject<HTMLTextAreaElement>;
+  ioRef: React.RefObject<HTMLTextAreaElement>;
+  prevIoRef: React.MutableRefObject<string>;
 
   running: boolean;
+  setRunning: React.Dispatch<React.SetStateAction<boolean>>;
   waitingForInput: boolean;
   stopped: boolean;
 
-  constructor(outputRef: React.RefObject<HTMLTextAreaElement>) {
+  constructor(
+    ioRef: React.RefObject<HTMLTextAreaElement>,
+    prevIoRef: React.MutableRefObject<string>,
+    setRunning: React.Dispatch<React.SetStateAction<boolean>>
+  ) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
@@ -32,9 +36,11 @@ export class BrainfuckInterpreter {
     this.input = "";
     this.inputPtr = 0;
 
-    this.outputRef = outputRef;
+    this.ioRef = ioRef;
+    this.prevIoRef = prevIoRef;
 
     this.running = false;
+    this.setRunning = setRunning;
     this.waitingForInput = false;
     this.stopped = true;
   }
@@ -51,24 +57,26 @@ export class BrainfuckInterpreter {
     this.input = "";
     this.inputPtr = 0;
 
-    this.outputRef.current!.value = "";
+    this.ioRef.current!.value = "";
+    this.prevIoRef.current = "";
 
     this.running = true;
     this.waitingForInput = false;
     this.stopped = false;
 
     console.log("running");
+    this.setRunning(true);
     this._run();
   }
 
   _run() {
-    console.log("peter");
     for (let i = 0; i < OPS_PER_ANIM_REQ; i++) {
       if (this.waitingForInput) break;
       this.step();
       if (!this.running) {
         console.log("stopped");
         this.stopped = true;
+        this.setRunning(false);
         return;
       }
     }
@@ -85,6 +93,7 @@ export class BrainfuckInterpreter {
 
   setInput(input: string) {
     this.input = input;
+    this.inputPtr = 0;
     this.waitingForInput = false;
   }
 
@@ -151,10 +160,9 @@ export class BrainfuckInterpreter {
   }
 
   out() {
-    this.outputRef.current!.value += String.fromCharCode(
-      this.data[this.dataPtr]
-    );
-    this.outputRef.current!.scrollTop = this.outputRef.current!.scrollHeight;
+    this.ioRef.current!.value += String.fromCharCode(this.data[this.dataPtr]);
+    this.prevIoRef.current = this.ioRef.current!.value;
+    this.ioRef.current!.scrollTop = this.ioRef.current!.scrollHeight;
   }
 
   in() {

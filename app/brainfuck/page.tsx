@@ -25,20 +25,20 @@ export default function Brainfuck() {
   const loadRef = useRef<HTMLInputElement>(null);
   const saveRef = useRef<HTMLAnchorElement>(null);
   const progRef = useRef<HTMLTextAreaElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const prevInputRef = useRef<string>("");
-  const outputRef = useRef<HTMLTextAreaElement>(null);
+  const ioRef = useRef<HTMLTextAreaElement>(null);
+  const prevIORef = useRef<string>("");
+  const [running, setRunning] = useState<boolean>(false);
   const interpreter = useRef<BrainfuckInterpreter>(
-    new BrainfuckInterpreter(outputRef)
+    new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
   );
 
   const run = async () => {
-    inputRef.current!.value = "";
-    prevInputRef.current = "";
-    await interpreter.current!.run(progRef.current!.value);
+    await interpreter.current.run(progRef.current!.value);
   };
 
-  const stop = async () => await interpreter.current!.stop();
+  const stop = async () => {
+    await interpreter.current.stop();
+  };
 
   const chooseFile = () => loadRef.current!.click();
 
@@ -58,13 +58,16 @@ export default function Brainfuck() {
   };
 
   const setInput = () => {
-    let currInput = inputRef.current!.value;
-    if (currInput.length <= prevInputRef.current.length) {
-      currInput = prevInputRef.current;
-      inputRef.current!.value = currInput;
-    } else if (currInput.endsWith("\n")) {
-      prevInputRef.current = currInput;
-      interpreter.current.setInput(currInput);
+    let io = ioRef.current!.value;
+    let prevIO = prevIORef.current;
+    if (io.length <= prevIO.length) {
+      io = prevIORef.current;
+      ioRef.current!.value = io;
+    } else if (io.endsWith("\n")) {
+      const input = io.substring(prevIO.length);
+      console.log(input);
+      prevIORef.current = io;
+      interpreter.current.setInput(input);
     }
   };
 
@@ -77,32 +80,25 @@ export default function Brainfuck() {
     <main className={styles.main}>
       <Window
         title="Brainfuck Interpreter"
+        icon="editor.png"
+        gridArea="editor"
         actions={
           new Map([
-            ["Run", run],
-            ["Stop", stop],
-            ["Load", chooseFile],
-            ["Save", save],
+            ["Run", [run, false]],
+            ["Stop", [stop, !running]],
+            ["Load", [chooseFile, false]],
+            ["Save", [save, false]],
           ])
         }
-        gridArea="editor"
       >
         <textarea ref={progRef} className={styles.textArea} name="editor" />
       </Window>
-      <Window title="Input">
+      <Window title="Terminal" icon="terminal.png" gridArea="terminal">
         <textarea
-          ref={inputRef}
+          ref={ioRef}
           className={styles.textArea}
-          name="input"
+          name="terminal"
           onChange={setInput}
-        />
-      </Window>
-      <Window title="Output">
-        <textarea
-          ref={outputRef}
-          className={styles.textArea}
-          name="output"
-          readOnly={true}
         />
       </Window>
       <input

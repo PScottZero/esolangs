@@ -4,8 +4,9 @@ import { ReactElement } from "react";
 
 type WindowProps = {
   title: string;
-  actions?: Map<string, () => void>;
+  icon?: string;
   gridArea?: string;
+  actions?: Map<string, [() => void, boolean]>;
   children?: React.ReactNode;
 };
 
@@ -55,11 +56,20 @@ function TitleBarButtons(): ReactElement {
 type ActionProps = {
   name: string;
   func: () => void;
+  disabled: boolean;
 };
 
-function Action({ name, func }: ActionProps): ReactElement {
+function Action({ name, func, disabled }: ActionProps): ReactElement {
   return (
-    <span onClick={func} className={styles.action}>
+    <span
+      onClick={func}
+      className={styles.action}
+      style={{
+        pointerEvents: disabled ? "none" : "auto",
+        color: disabled ? "gray" : "",
+        cursor: disabled ? "auto" : "pointer",
+      }}
+    >
       <u>{name.substring(0, 1)}</u>
       {name.substring(1)}
     </span>
@@ -68,13 +78,16 @@ function Action({ name, func }: ActionProps): ReactElement {
 
 export default function Window({
   title,
+  icon,
   actions,
   gridArea,
   children,
 }: WindowProps) {
   const actionEls: ReactElement[] = [];
-  actions?.forEach((func: () => void, name: string) => {
-    actionEls.push(<Action key={name} name={name} func={func} />);
+  actions?.forEach((cfg: [() => void, boolean], name: string) => {
+    actionEls.push(
+      <Action key={name} name={name} func={cfg[0]} disabled={cfg[1]} />
+    );
   });
   return (
     <div
@@ -85,7 +98,7 @@ export default function Window({
         <div className={styles.titleBar}>
           <div className={styles.title}>
             <Image
-              src="/esolangs/icons/window-icon.png"
+              src={`/esolangs/icons/${icon ?? "window-icon.png"}`}
               alt="window icon"
               width={32}
               height={32}
