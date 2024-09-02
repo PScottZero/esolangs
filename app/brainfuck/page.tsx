@@ -7,62 +7,40 @@ import { BrainfuckInterpreter } from "./interpreter";
 import React from "react";
 
 const DEFAULT_PROG = `
-,
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>++++++++++++++<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>>+++++[<----->-]<<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>++++++++++++++<-
-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>++++++++++++++<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>>+++++[<----->-]<<-
-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-
-[>++++++++++++++<-
-[>+<-]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
-]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>.[-]<,]
+[sierpinski.b -- display Sierpinski triangle
+(c) 2016 Daniel B. Cristofani
+http://brainfuck.org/]
 
-of course any function char f(char) can be made easily on the same principle
+++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[
+    -<<<[
+        ->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<
+    ]>.>+[>>]>+
+]
 
-[Daniel B Cristofani (cristofdathevanetdotcom)
-http://www.hevanet.com/cristofd/brainfuck/]
+[Shows an ASCII representation of the Sierpinski triangle
+(iteration 5).]
 `.trim();
-
-const DEFAULT_INPUT = "Uryyb Jbeyq!";
 
 export default function Brainfuck() {
   const loadRef = useRef<HTMLInputElement>(null);
   const saveRef = useRef<HTMLAnchorElement>(null);
   const progRef = useRef<HTMLTextAreaElement>(null);
-  const dataRef = useRef<HTMLTextAreaElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const prevInputRef = useRef<string>("");
   const outputRef = useRef<HTMLTextAreaElement>(null);
   const interpreter = useRef<BrainfuckInterpreter>(
     new BrainfuckInterpreter(outputRef)
   );
 
   const run = async () => {
-    await interpreter.current!.stop();
-    interpreter.current!.load(
-      progRef.current!.value.trim(),
-      inputRef.current!.value.trim()
-    );
-    console.log("Running");
-    interpreter.current!.run();
+    inputRef.current!.value = "";
+    prevInputRef.current = "";
+    await interpreter.current!.run(progRef.current!.value);
   };
 
-  const stop = async () => {
-    await interpreter.current!.stop();
-    interpreter.current!.running = false;
-  };
+  const stop = async () => await interpreter.current!.stop();
 
-  const chooseFile = () => {
-    loadRef.current!.click();
-  };
+  const chooseFile = () => loadRef.current!.click();
 
   const load = (e: ChangeEvent<HTMLInputElement>) => {
     const reader = new FileReader();
@@ -79,9 +57,19 @@ export default function Brainfuck() {
     saveRef.current!.click();
   };
 
+  const setInput = () => {
+    let currInput = inputRef.current!.value;
+    if (currInput.length <= prevInputRef.current.length) {
+      currInput = prevInputRef.current;
+      inputRef.current!.value = currInput;
+    } else if (currInput.endsWith("\n")) {
+      prevInputRef.current = currInput;
+      interpreter.current.setInput(currInput);
+    }
+  };
+
   useEffect(() => {
     progRef.current!.value = DEFAULT_PROG;
-    inputRef.current!.value = DEFAULT_INPUT;
     run();
   }, []);
 
@@ -91,39 +79,22 @@ export default function Brainfuck() {
         title="Brainfuck Interpreter"
         actions={
           new Map([
-            ["Load", chooseFile],
-            ["Save", save],
             ["Run", run],
             ["Stop", stop],
+            ["Load", chooseFile],
+            ["Save", save],
           ])
         }
         gridArea="editor"
       >
-        <textarea
-          ref={progRef}
-          className={styles.textArea}
-          name="editor"
-          onChange={(e) => (progRef.current!.value = e.target.value)}
-        />
+        <textarea ref={progRef} className={styles.textArea} name="editor" />
       </Window>
-      {/* <Window
-        title="Debug"
-        actions={
-          new Map([
-            ["Debug", () => {}],
-            ["Step", () => {}],
-            ["Continue", () => {}],
-          ])
-        }
-      >
-        WIP
-      </Window> */}
       <Window title="Input">
         <textarea
           ref={inputRef}
           className={styles.textArea}
           name="input"
-          onChange={(e) => (inputRef.current!.value = e.target.value)}
+          onChange={setInput}
         />
       </Window>
       <Window title="Output">

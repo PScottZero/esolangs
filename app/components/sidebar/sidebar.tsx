@@ -33,10 +33,8 @@ export default function Sidebar() {
   const router = useRouter();
   return (
     <div className={styles.sidebar}>
-      {esolang(router, "Beatnik")}
       {esolang(router, "Brainfuck")}
       {esolang(router, "Piet")}
-      {esolang(router, "Shakes- peare", "shakespeare")}
     </div>
   );
 }

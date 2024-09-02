@@ -1,8 +1,6 @@
 import { createBytes } from "../utils";
 
-const DATA_SIZE = 0x100000;
-const PROG_SIZE = 0x10000;
-const INPUT_SIZE = 0x1000;
+const DATA_SIZE = 0x10000;
 
 const OPS_PER_ANIM_REQ = 4096;
 
@@ -12,89 +10,86 @@ export class BrainfuckInterpreter {
   data: Uint8Array;
   dataPtr: number;
 
-  prog: Uint8Array;
+  program: string;
   progPtr: number;
 
-  input: Uint8Array;
+  input: string;
   inputPtr: number;
 
   outputRef: React.RefObject<HTMLTextAreaElement>;
 
   running: boolean;
+  waitingForInput: boolean;
   stopped: boolean;
 
   constructor(outputRef: React.RefObject<HTMLTextAreaElement>) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
-    this.prog = createBytes(PROG_SIZE);
+    this.program = "";
     this.progPtr = 0;
 
-    this.input = createBytes(INPUT_SIZE);
+    this.input = "";
     this.inputPtr = 0;
 
     this.outputRef = outputRef;
 
     this.running = false;
+    this.waitingForInput = false;
     this.stopped = true;
   }
 
-  reset() {
+  async run(program: string) {
+    if (this.running) await this.stop();
+
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
-    this.prog = createBytes(PROG_SIZE);
+    this.program = program;
     this.progPtr = 0;
 
+    this.input = "";
     this.inputPtr = 0;
 
     this.outputRef.current!.value = "";
 
     this.running = true;
+    this.waitingForInput = false;
     this.stopped = false;
+
+    console.log("running");
+    this._run();
   }
 
-  run() {
+  _run() {
+    console.log("peter");
     for (let i = 0; i < OPS_PER_ANIM_REQ; i++) {
+      if (this.waitingForInput) break;
       this.step();
       if (!this.running) {
-        console.log("Terminated");
+        console.log("stopped");
         this.stopped = true;
         return;
       }
     }
-    requestAnimationFrame(() => this.run());
+    requestAnimationFrame(() => this._run());
   }
 
   async stop(): Promise<void> {
     this.running = false;
+    this.waitingForInput = false;
     while (!this.stopped) {
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
   }
 
-  load(programText: string, inputText: string) {
-    this.reset();
-
-    for (const ch of programText) {
-      if (OP_CHARS.includes(ch) && this.progPtr < PROG_SIZE) {
-        this.prog[this.progPtr++] = ch.charCodeAt(0);
-      }
-    }
-    this.progPtr = 0;
-
-    for (const ch of inputText) {
-      const chCode = ch.charCodeAt(0);
-      if (chCode < 256) {
-        this.input[this.inputPtr++] = chCode;
-      }
-    }
-    this.inputPtr = 0;
+  setInput(input: string) {
+    this.input = input;
+    this.waitingForInput = false;
   }
 
   step() {
-    const op = String.fromCharCode(this.prog[this.progPtr]);
-    switch (op) {
+    switch (this.readOp()) {
       case ">":
         this.incDataPtr();
         break;
@@ -114,17 +109,27 @@ export class BrainfuckInterpreter {
         this.in();
         break;
       case "[":
-        this.loopStart();
+        this.openBracket();
         break;
       case "]":
-        this.loopEnd();
+        this.closeBracket();
         break;
       default:
-        console.log(`invalid op: ${op}`);
+        console.log("end of program");
         this.running = false;
         break;
     }
-    if (++this.progPtr >= PROG_SIZE) this.progPtr = 0;
+    if (!this.waitingForInput) this.progPtr++;
+  }
+
+  readOp(): string {
+    while (true) {
+      if (this.progPtr >= this.program.length) break;
+      const ch = this.program.at(this.progPtr)!;
+      if (OP_CHARS.includes(ch)) return ch;
+      this.progPtr++;
+    }
+    return "";
   }
 
   incDataPtr() {
@@ -153,19 +158,19 @@ export class BrainfuckInterpreter {
   }
 
   in() {
-    if (this.inputPtr < INPUT_SIZE) {
-      this.data[this.dataPtr] = this.input[this.inputPtr++];
+    if (this.inputPtr < this.input.length) {
+      this.data[this.dataPtr] = this.input.charCodeAt(this.inputPtr++);
     } else {
-      console.log("end of input");
-      this.running = false;
+      console.log("waiting for input");
+      this.waitingForInput = true;
     }
   }
 
-  loopStart() {
+  openBracket() {
     if (this.data[this.dataPtr] === 0) this.jumpToMatchingBracket();
   }
 
-  loopEnd() {
+  closeBracket() {
     if (this.data[this.dataPtr] !== 0) this.jumpToMatchingBracket(false);
   }
 
@@ -175,8 +180,8 @@ export class BrainfuckInterpreter {
     const bracket = forward ? "[" : "]";
     const otherBracket = forward ? "]" : "[";
 
-    while (this.progPtr >= 0 && this.progPtr < PROG_SIZE) {
-      const ch = String.fromCharCode(this.prog[this.progPtr]);
+    while (this.progPtr >= 0 && this.progPtr < this.program.length) {
+      const ch = this.program.at(this.progPtr);
       if (ch === bracket) {
         depth++;
       } else if (ch === otherBracket) {
