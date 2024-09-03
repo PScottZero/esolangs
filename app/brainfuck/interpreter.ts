@@ -5,7 +5,6 @@ const OPS_PER_ANIM_REQ = 4096;
 const CMD_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
 const RUN_MSG = "### Running...\n\n";
 const STOP_MSG = "\n### Stopped.\n";
-const FIN_MSG = "\n### Finished.\n";
 
 export class BrainfuckInterpreter {
   data: Uint8Array;
@@ -153,6 +152,7 @@ export class BrainfuckInterpreter {
     if (this.inputPtr < this.input.length) {
       this.data[this.dataPtr] = this.input.charCodeAt(this.inputPtr++);
     } else {
+      console.log("waiting for input");
       this.waitingForInput = true;
     }
   }
@@ -199,7 +199,7 @@ export class BrainfuckInterpreter {
   }
 
   setInput(input: string) {
-    this.input = input;
+    this.input = input.replaceAll("\n", "\0");
     this.inputPtr = 0;
     this.waitingForInput = false;
   }

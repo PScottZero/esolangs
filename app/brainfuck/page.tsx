@@ -69,6 +69,7 @@ export default function Brainfuck() {
   const ioRef = useRef<HTMLTextAreaElement>(null);
   const prevIORef = useRef<string>("");
   const [running, setRunning] = useState<boolean>(false);
+  const [returnCh, setReturnCh] = useState<string>("\n");
   const interpreter = useRef<BrainfuckInterpreter>(
     new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
   );
@@ -109,11 +110,14 @@ export default function Brainfuck() {
       io = prevIORef.current;
       ioRef.current!.value = io;
     } else if (io.endsWith("\n")) {
-      const input = io.substring(prevIO.length);
+      const input = io.substring(prevIO.length).replaceAll("\n", returnCh);
       prevIORef.current = io;
       interpreter.current.setInput(input);
+      console.log(`accepted input: ${input}`);
     }
   };
+
+  const toggleReturnCh = () => setReturnCh(returnCh === "\n" ? "\0" : "\n");
 
   useEffect(() => {
     progRef.current!.value = DEFAULT_PROG;
@@ -129,8 +133,8 @@ export default function Brainfuck() {
         onClick={() => readProgramFromServer(program)}
       >
         <Image
-          src="/esolangs/icons/program-icon.png"
-          alt="program icon"
+          src="/esolangs/icons/program.png"
+          alt="program"
           width={32}
           height={32}
         />
@@ -142,7 +146,7 @@ export default function Brainfuck() {
   return (
     <main className={styles.main}>
       <Window
-        title="Brainfuck Interpreter"
+        title="Brainfuck Editor"
         icon="editor.png"
         gridArea="editor"
         actions={[
@@ -154,10 +158,20 @@ export default function Brainfuck() {
       >
         <textarea ref={progRef} className={styles.textArea} name="editor" />
       </Window>
-      <Window title="Programs" icon="terminal.png" gridArea="programs">
+      <Window title="Programs" icon="folder.png" gridArea="programs">
         <div className={styles.programs}>{programEls}</div>
       </Window>
-      <Window title="Terminal" icon="terminal.png" gridArea="terminal">
+      <Window
+        title="Terminal"
+        icon="terminal.png"
+        gridArea="terminal"
+        actions={[
+          {
+            name: `Return Sends ${returnCh === "\n" ? "\\n" : "\\0"}`,
+            action: toggleReturnCh,
+          },
+        ]}
+      >
         <textarea
           ref={ioRef}
           className={styles.textArea}
