@@ -2,11 +2,17 @@ import Image from "next/image";
 import styles from "./window.module.scss";
 import { ReactElement } from "react";
 
+type ActionProps = {
+  name: string;
+  action: () => void;
+  disabled?: boolean;
+};
+
 type WindowProps = {
   title: string;
   icon?: string;
   gridArea?: string;
-  actions?: Map<string, [() => void, boolean]>;
+  actions?: ActionProps[];
   children?: React.ReactNode;
 };
 
@@ -53,16 +59,10 @@ function TitleBarButtons(): ReactElement {
   );
 }
 
-type ActionProps = {
-  name: string;
-  func: () => void;
-  disabled: boolean;
-};
-
-function Action({ name, func, disabled }: ActionProps): ReactElement {
+function Action({ name, action, disabled }: ActionProps): ReactElement {
   return (
     <span
-      onClick={func}
+      onClick={action}
       className={styles.action}
       style={{
         pointerEvents: disabled ? "none" : "auto",
@@ -84,9 +84,10 @@ export default function Window({
   children,
 }: WindowProps) {
   const actionEls: ReactElement[] = [];
-  actions?.forEach((cfg: [() => void, boolean], name: string) => {
+
+  actions?.forEach(({ name, action, disabled }: ActionProps) => {
     actionEls.push(
-      <Action key={name} name={name} func={cfg[0]} disabled={cfg[1]} />
+      <Action key={name} name={name} action={action} disabled={disabled} />
     );
   });
   return (

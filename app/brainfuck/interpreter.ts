@@ -2,7 +2,10 @@ import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x10000;
 const OPS_PER_ANIM_REQ = 4096;
-const OP_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
+const CMD_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
+const RUN_MSG = "### Running...\n\n";
+const STOP_MSG = "\n### Stopped.\n";
+const FIN_MSG = "\n### Finished.\n";
 
 export class BrainfuckInterpreter {
   data: Uint8Array;
@@ -15,7 +18,7 @@ export class BrainfuckInterpreter {
   inputPtr: number;
 
   ioRef: React.RefObject<HTMLTextAreaElement>;
-  prevIoRef: React.MutableRefObject<string>;
+  prevIORef: React.MutableRefObject<string>;
 
   running: boolean;
   setRunning: React.Dispatch<React.SetStateAction<boolean>>;
@@ -37,7 +40,7 @@ export class BrainfuckInterpreter {
     this.inputPtr = 0;
 
     this.ioRef = ioRef;
-    this.prevIoRef = prevIoRef;
+    this.prevIORef = prevIoRef;
 
     this.running = false;
     this.setRunning = setRunning;
@@ -57,14 +60,13 @@ export class BrainfuckInterpreter {
     this.input = "";
     this.inputPtr = 0;
 
-    this.ioRef.current!.value = "";
-    this.prevIoRef.current = "";
+    this.ioRef.current!.value = RUN_MSG;
+    this.prevIORef.current = RUN_MSG;
 
     this.running = true;
     this.waitingForInput = false;
     this.stopped = false;
 
-    console.log("running");
     this.setRunning(true);
     this._run();
   }
@@ -74,9 +76,10 @@ export class BrainfuckInterpreter {
       if (this.waitingForInput) break;
       this.step();
       if (!this.running) {
-        console.log("stopped");
         this.stopped = true;
         this.setRunning(false);
+        if (!this.ioRef.current!.value.endsWith("\n")) this.appendOutput("\n");
+        this.appendOutput(STOP_MSG);
         return;
       }
     }
@@ -91,14 +94,8 @@ export class BrainfuckInterpreter {
     }
   }
 
-  setInput(input: string) {
-    this.input = input;
-    this.inputPtr = 0;
-    this.waitingForInput = false;
-  }
-
   step() {
-    switch (this.readOp()) {
+    switch (this.readCmd()) {
       case ">":
         this.incDataPtr();
         break;
@@ -124,21 +121,10 @@ export class BrainfuckInterpreter {
         this.closeBracket();
         break;
       default:
-        console.log("end of program");
         this.running = false;
         break;
     }
     if (!this.waitingForInput) this.progPtr++;
-  }
-
-  readOp(): string {
-    while (true) {
-      if (this.progPtr >= this.program.length) break;
-      const ch = this.program.at(this.progPtr)!;
-      if (OP_CHARS.includes(ch)) return ch;
-      this.progPtr++;
-    }
-    return "";
   }
 
   incDataPtr() {
@@ -160,16 +146,13 @@ export class BrainfuckInterpreter {
   }
 
   out() {
-    this.ioRef.current!.value += String.fromCharCode(this.data[this.dataPtr]);
-    this.prevIoRef.current = this.ioRef.current!.value;
-    this.ioRef.current!.scrollTop = this.ioRef.current!.scrollHeight;
+    this.appendOutput(String.fromCharCode(this.data[this.dataPtr]));
   }
 
   in() {
     if (this.inputPtr < this.input.length) {
       this.data[this.dataPtr] = this.input.charCodeAt(this.inputPtr++);
     } else {
-      console.log("waiting for input");
       this.waitingForInput = true;
     }
   }
@@ -199,5 +182,31 @@ export class BrainfuckInterpreter {
     }
 
     this.progPtr = 0;
+  }
+
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // Input + Output
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  readCmd(): string {
+    while (true) {
+      if (this.progPtr >= this.program.length) break;
+      const ch = this.program.at(this.progPtr)!;
+      if (CMD_CHARS.includes(ch)) return ch;
+      this.progPtr++;
+    }
+    return "";
+  }
+
+  setInput(input: string) {
+    this.input = input;
+    this.inputPtr = 0;
+    this.waitingForInput = false;
+  }
+
+  appendOutput(str: string) {
+    this.ioRef.current!.value += str;
+    this.prevIORef.current = this.ioRef.current!.value;
+    this.ioRef.current!.scrollTop = this.ioRef.current!.scrollHeight;
   }
 }

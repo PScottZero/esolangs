@@ -1,10 +1,11 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
 import Window from "./../components/window/window";
 import styles from "./page.module.scss";
 import { BrainfuckInterpreter } from "./interpreter";
 import React from "react";
+import Image from "next/image";
 
 const DEFAULT_PROG = `
 [sierpinski.b -- display Sierpinski triangle
@@ -21,6 +22,46 @@ http://brainfuck.org/]
 (iteration 5).]
 `.trim();
 
+const PROGRAMS = [
+  "400quine.b",
+  "bsort.b",
+  "collatz.b",
+  "dbf2c.b",
+  "dbfi.b",
+  "dquine.b",
+  "dvorak.b",
+  "e.b",
+  "factorial2.b",
+  "fib.b",
+  "golden.b",
+  "head.b",
+  "impeccable.b",
+  "isort.b",
+  "jabh.b",
+  "life.b",
+  "numwarp.b",
+  "qsort.b",
+  "random.b",
+  "rot13.b",
+  "short.b",
+  "sierpinski.b",
+  "squares.b",
+  "squares2.b",
+  "thuemorse.b",
+  "tictactoe.b",
+  "utm.b",
+  "wc.b",
+  "xmastree.b",
+];
+
+function inputValid(io: string, prevIO: string): boolean {
+  if (io.length <= prevIO.length) return false;
+  for (let i = 0; i < prevIO.length; i++) {
+    if (io.at(i) !== prevIO.at(i)) return false;
+  }
+  return true;
+}
+
 export default function Brainfuck() {
   const loadRef = useRef<HTMLInputElement>(null);
   const saveRef = useRef<HTMLAnchorElement>(null);
@@ -32,22 +73,26 @@ export default function Brainfuck() {
     new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
   );
 
-  const run = async () => {
-    await interpreter.current.run(progRef.current!.value);
+  const run = async () => await interpreter.current.run(progRef.current!.value);
+
+  const stop = async () => await interpreter.current.stop();
+
+  const load = () => loadRef.current!.click();
+
+  const readProgramFromFileChooser = async (e: ChangeEvent<HTMLInputElement>) =>
+    readProgram(e.target.files![0]);
+
+  const readProgramFromServer = async (name: string) => {
+    const res = await fetch(`/esolangs/bin/brainfuck/${name}`);
+    if (res.ok) await readProgram(await res.blob());
   };
 
-  const stop = async () => {
-    await interpreter.current.stop();
-  };
-
-  const chooseFile = () => loadRef.current!.click();
-
-  const load = (e: ChangeEvent<HTMLInputElement>) => {
+  const readProgram = async (file: Blob) => {
     const reader = new FileReader();
     reader.onload = async () => {
       progRef.current!.value = reader.result as string;
     };
-    reader.readAsText(e.target.files![0]);
+    reader.readAsText(file);
   };
 
   const save = () => {
@@ -60,12 +105,11 @@ export default function Brainfuck() {
   const setInput = () => {
     let io = ioRef.current!.value;
     let prevIO = prevIORef.current;
-    if (io.length <= prevIO.length) {
+    if (!inputValid(io, prevIO)) {
       io = prevIORef.current;
       ioRef.current!.value = io;
     } else if (io.endsWith("\n")) {
       const input = io.substring(prevIO.length);
-      console.log(input);
       prevIORef.current = io;
       interpreter.current.setInput(input);
     }
@@ -76,22 +120,42 @@ export default function Brainfuck() {
     run();
   }, []);
 
+  const programEls: ReactElement[] = [];
+  for (const program of PROGRAMS) {
+    programEls.push(
+      <div
+        key={program}
+        className={styles.program}
+        onClick={() => readProgramFromServer(program)}
+      >
+        <Image
+          src="/esolangs/icons/program-icon.png"
+          alt="program icon"
+          width={32}
+          height={32}
+        />
+        <p>{program}</p>
+      </div>
+    );
+  }
+
   return (
     <main className={styles.main}>
       <Window
         title="Brainfuck Interpreter"
         icon="editor.png"
         gridArea="editor"
-        actions={
-          new Map([
-            ["Run", [run, false]],
-            ["Stop", [stop, !running]],
-            ["Load", [chooseFile, false]],
-            ["Save", [save, false]],
-          ])
-        }
+        actions={[
+          { name: "Run", action: run },
+          { name: "Stop", action: stop, disabled: !running },
+          { name: "Load", action: load },
+          { name: "Save", action: save },
+        ]}
       >
         <textarea ref={progRef} className={styles.textArea} name="editor" />
+      </Window>
+      <Window title="Programs" icon="terminal.png" gridArea="programs">
+        <div className={styles.programs}>{programEls}</div>
       </Window>
       <Window title="Terminal" icon="terminal.png" gridArea="terminal">
         <textarea
@@ -106,7 +170,7 @@ export default function Brainfuck() {
         type="file"
         accept=".b,.bf"
         style={{ display: "none" }}
-        onChange={load}
+        onChange={readProgramFromFileChooser}
       />
       <a ref={saveRef} style={{ display: "none" }} />
     </main>

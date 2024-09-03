@@ -2,6 +2,8 @@
 
 .outerWindow {
   @include two-color-border($gray, $black);
+  min-height: 0;
+  min-width: 0;
 }
 
 .innerWindow {
@@ -79,12 +81,14 @@
 .outerContent {
   @include two-color-border($dark-gray, $white);
   grid-area: content;
+  overflow: auto;
 }
 
 .innerContent {
   @include two-color-border($black, $gray);
   height: 100%;
   background: $white;
+  overflow: auto;
 }
 
 .actions {
