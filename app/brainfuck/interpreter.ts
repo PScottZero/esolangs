@@ -19,9 +19,12 @@ export class BrainfuckInterpreter {
   ioRef: React.RefObject<HTMLTextAreaElement>;
   prevIORef: React.MutableRefObject<string>;
 
+  waitingForInput: boolean;
+  inputBeforeRun: boolean;
+  waitingForInitialInput: boolean;
+
   running: boolean;
   setRunning: React.Dispatch<React.SetStateAction<boolean>>;
-  waitingForInput: boolean;
   stopped: boolean;
 
   constructor(
@@ -41,13 +44,16 @@ export class BrainfuckInterpreter {
     this.ioRef = ioRef;
     this.prevIORef = prevIoRef;
 
+    this.waitingForInput = false;
+    this.inputBeforeRun = false;
+    this.waitingForInitialInput = false;
+
     this.running = false;
     this.setRunning = setRunning;
-    this.waitingForInput = false;
     this.stopped = true;
   }
 
-  async run(program: string) {
+  async run(program: string, inputBeforeRun: boolean = false) {
     if (this.running) await this.stop();
 
     this.data = createBytes(DATA_SIZE);
@@ -59,20 +65,25 @@ export class BrainfuckInterpreter {
     this.input = "";
     this.inputPtr = 0;
 
-    this.ioRef.current!.value = RUN_MSG;
+    this.ioRef.current!.value = inputBeforeRun ? "" : RUN_MSG;
     this.prevIORef.current = RUN_MSG;
 
-    this.running = true;
     this.waitingForInput = false;
+    this.inputBeforeRun = inputBeforeRun;
+    this.waitingForInitialInput = inputBeforeRun;
+
+    this.running = true;
+    this.setRunning(true);
     this.stopped = false;
 
-    this.setRunning(true);
+    if (inputBeforeRun) this.appendOutput("#### Input:\n\n");
     this._run();
   }
 
   _run() {
     for (let i = 0; i < OPS_PER_ANIM_REQ; i++) {
       if (this.waitingForInput) break;
+      if (this.waitingForInitialInput) break;
       this.step();
       if (!this.running) {
         this.stopped = true;
@@ -88,6 +99,7 @@ export class BrainfuckInterpreter {
   async stop(): Promise<void> {
     this.running = false;
     this.waitingForInput = false;
+    this.waitingForInitialInput = false;
     while (!this.stopped) {
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
@@ -152,8 +164,10 @@ export class BrainfuckInterpreter {
     if (this.inputPtr < this.input.length) {
       this.data[this.dataPtr] = this.input.charCodeAt(this.inputPtr++);
     } else {
-      console.log("waiting for input");
-      this.waitingForInput = true;
+      if (!this.inputBeforeRun) {
+        console.log("waiting for input");
+        this.waitingForInput = true;
+      }
     }
   }
 
@@ -202,6 +216,13 @@ export class BrainfuckInterpreter {
     this.input = input.replaceAll("\n", "\0");
     this.inputPtr = 0;
     this.waitingForInput = false;
+    if (this.waitingForInitialInput) {
+      while (!this.ioRef.current!.value.endsWith("\n\n")) {
+        this.appendOutput("\n");
+      }
+      this.appendOutput(RUN_MSG);
+      this.waitingForInitialInput = false;
+    }
   }
 
   appendOutput(str: string) {

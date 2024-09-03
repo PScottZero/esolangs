@@ -69,12 +69,14 @@ export default function Brainfuck() {
   const ioRef = useRef<HTMLTextAreaElement>(null);
   const prevIORef = useRef<string>("");
   const [running, setRunning] = useState<boolean>(false);
-  const [returnCh, setReturnCh] = useState<string>("\n");
+  const [inputBeforeRun, setInputBeforeRun] = useState<boolean>(false);
   const interpreter = useRef<BrainfuckInterpreter>(
     new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
   );
 
-  const run = async () => await interpreter.current.run(progRef.current!.value);
+  const run = async () => {
+    await interpreter.current.run(progRef.current!.value, inputBeforeRun);
+  };
 
   const stop = async () => await interpreter.current.stop();
 
@@ -104,20 +106,22 @@ export default function Brainfuck() {
   };
 
   const setInput = () => {
-    let io = ioRef.current!.value;
-    let prevIO = prevIORef.current;
-    if (!inputValid(io, prevIO)) {
-      io = prevIORef.current;
-      ioRef.current!.value = io;
-    } else if (io.endsWith("\n")) {
-      const input = io.substring(prevIO.length).replaceAll("\n", returnCh);
-      prevIORef.current = io;
-      interpreter.current.setInput(input);
-      console.log(`accepted input: ${input}`);
+    if (interpreter.current.running) {
+      let io = ioRef.current!.value;
+      let prevIO = prevIORef.current;
+      if (!inputValid(io, prevIO)) {
+        io = prevIORef.current;
+        ioRef.current!.value = io;
+      } else if (io.endsWith("\n")) {
+        const input = io.substring(prevIO.length);
+        prevIORef.current = io;
+        interpreter.current.setInput(input);
+        console.log(`accepted input: ${input}`);
+      }
     }
   };
 
-  const toggleReturnCh = () => setReturnCh(returnCh === "\n" ? "\0" : "\n");
+  const toggleInputBeforeRun = () => setInputBeforeRun(!inputBeforeRun);
 
   useEffect(() => {
     progRef.current!.value = DEFAULT_PROG;
@@ -167,8 +171,9 @@ export default function Brainfuck() {
         gridArea="terminal"
         actions={[
           {
-            name: `Return Sends ${returnCh === "\n" ? "\\n" : "\\0"}`,
-            action: toggleReturnCh,
+            name: inputBeforeRun ? "Input: Before Run" : "Input: During Run",
+            action: toggleInputBeforeRun,
+            disabled: running,
           },
         ]}
       >
