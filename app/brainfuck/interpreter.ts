@@ -30,7 +30,7 @@ export class BrainfuckInterpreter {
   constructor(
     ioRef: React.RefObject<HTMLTextAreaElement>,
     prevIoRef: React.MutableRefObject<string>,
-    setRunning: React.Dispatch<React.SetStateAction<boolean>>
+    setRunning: React.Dispatch<React.SetStateAction<boolean>>,
   ) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
@@ -216,7 +216,7 @@ export class BrainfuckInterpreter {
     this.inputPtr = 0;
 
     if (!this.cliMode) {
-      this.input = this.input.substring(0, this.input.length - 1) + '\0';
+      this.input = this.input.substring(0, this.input.length - 1) + "\0";
       this.appendLineBreak(true);
       this.appendOutput(RUN_MSG);
     }
@@ -231,7 +231,7 @@ export class BrainfuckInterpreter {
   }
 
   appendLineBreak(doubled: boolean = false) {
-    const lineBreak = doubled ? '\n\n' : '\n';
+    const lineBreak = doubled ? "\n\n" : "\n";
     while (!this.ioRef.current!.value.endsWith(lineBreak)) {
       this.appendOutput("\n");
     }

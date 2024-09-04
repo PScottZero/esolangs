@@ -71,7 +71,7 @@ export default function Brainfuck() {
   const [running, setRunning] = useState<boolean>(false);
   const [cliMode, setCliMode] = useState<boolean>(true);
   const interpreter = useRef<BrainfuckInterpreter>(
-    new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
+    new BrainfuckInterpreter(ioRef, prevIORef, setRunning),
   );
 
   const run = async () => {
@@ -143,7 +143,7 @@ export default function Brainfuck() {
           height={32}
         />
         <p>{program}</p>
-      </div>
+      </div>,
     );
   }
 

@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 function esolang(
   router: AppRouterInstance,
   label: string,
-  id?: string
+  id?: string,
 ): ReactElement {
   id = id ?? label.toLowerCase();
   return (

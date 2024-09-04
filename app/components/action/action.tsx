@@ -1,5 +1,5 @@
 import { ReactElement } from "react";
-import styles from "./action.module.scss"
+import styles from "./action.module.scss";
 
 export type ActionProps = {
   name: string;
