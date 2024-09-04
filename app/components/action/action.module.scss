@@ -1,0 +1,11 @@
+@import "./../../constants.scss";
+
+.action {
+  margin-bottom: 3px;
+  padding: 0.25rem 0.5rem;
+}
+
+.action:active {
+  background: $blue;
+  color: $white;
+}

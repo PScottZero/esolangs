@@ -69,13 +69,13 @@ export default function Brainfuck() {
   const ioRef = useRef<HTMLTextAreaElement>(null);
   const prevIORef = useRef<string>("");
   const [running, setRunning] = useState<boolean>(false);
-  const [inputBeforeRun, setInputBeforeRun] = useState<boolean>(false);
+  const [cliMode, setCliMode] = useState<boolean>(true);
   const interpreter = useRef<BrainfuckInterpreter>(
     new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
   );
 
   const run = async () => {
-    await interpreter.current.run(progRef.current!.value, inputBeforeRun);
+    await interpreter.current.run(progRef.current!.value, cliMode);
   };
 
   const stop = async () => await interpreter.current.stop();
@@ -121,7 +121,7 @@ export default function Brainfuck() {
     }
   };
 
-  const toggleInputBeforeRun = () => setInputBeforeRun(!inputBeforeRun);
+  const toggleCliMode = () => setCliMode(!cliMode);
 
   useEffect(() => {
     progRef.current!.value = DEFAULT_PROG;
@@ -171,8 +171,8 @@ export default function Brainfuck() {
         gridArea="terminal"
         actions={[
           {
-            name: inputBeforeRun ? "Input: Before Run" : "Input: During Run",
-            action: toggleInputBeforeRun,
+            name: cliMode ? "Mode: CLI" : "Mode: Input/Output",
+            action: toggleCliMode,
             disabled: running,
           },
         ]}

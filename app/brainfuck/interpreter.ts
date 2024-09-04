@@ -1,9 +1,10 @@
 import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x10000;
-const OPS_PER_ANIM_REQ = 4096;
+const CMDS_MER_MS = 4096;
 const CMD_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
 const RUN_MSG = "### Running...\n\n";
+const INPUT_MSG = "### Input:\n\n";
 const STOP_MSG = "\n### Stopped.\n";
 
 export class BrainfuckInterpreter {
@@ -20,8 +21,7 @@ export class BrainfuckInterpreter {
   prevIORef: React.MutableRefObject<string>;
 
   waitingForInput: boolean;
-  inputBeforeRun: boolean;
-  waitingForInitialInput: boolean;
+  cliMode: boolean;
 
   running: boolean;
   setRunning: React.Dispatch<React.SetStateAction<boolean>>;
@@ -45,15 +45,14 @@ export class BrainfuckInterpreter {
     this.prevIORef = prevIoRef;
 
     this.waitingForInput = false;
-    this.inputBeforeRun = false;
-    this.waitingForInitialInput = false;
+    this.cliMode = true;
 
     this.running = false;
     this.setRunning = setRunning;
     this.stopped = true;
   }
 
-  async run(program: string, inputBeforeRun: boolean = false) {
+  async run(program: string, cliMode: boolean = true) {
     if (this.running) await this.stop();
 
     this.data = createBytes(DATA_SIZE);
@@ -65,41 +64,43 @@ export class BrainfuckInterpreter {
     this.input = "";
     this.inputPtr = 0;
 
-    this.ioRef.current!.value = inputBeforeRun ? "" : RUN_MSG;
-    this.prevIORef.current = RUN_MSG;
+    const initialIO = cliMode ? RUN_MSG : INPUT_MSG;
+    this.ioRef.current!.value = initialIO;
+    this.prevIORef.current = initialIO;
 
-    this.waitingForInput = false;
-    this.inputBeforeRun = inputBeforeRun;
-    this.waitingForInitialInput = inputBeforeRun;
+    this.waitingForInput = !cliMode;
+    this.cliMode = cliMode;
 
     this.running = true;
     this.setRunning(true);
     this.stopped = false;
 
-    if (inputBeforeRun) this.appendOutput("#### Input:\n\n");
     this._run();
   }
 
-  _run() {
-    for (let i = 0; i < OPS_PER_ANIM_REQ; i++) {
+  _run(timestamp: number = Date.now()) {
+    const now = Date.now();
+    const cmdCount = (now - timestamp) * CMDS_MER_MS;
+    timestamp = now;
+
+    for (let i = 0; i < cmdCount; i++) {
       if (this.waitingForInput) break;
-      if (this.waitingForInitialInput) break;
       this.step();
       if (!this.running) {
         this.stopped = true;
         this.setRunning(false);
-        if (!this.ioRef.current!.value.endsWith("\n")) this.appendOutput("\n");
+        this.appendLineBreak();
         this.appendOutput(STOP_MSG);
         return;
       }
     }
-    requestAnimationFrame(() => this._run());
+
+    requestAnimationFrame(() => this._run(timestamp));
   }
 
   async stop(): Promise<void> {
     this.running = false;
     this.waitingForInput = false;
-    this.waitingForInitialInput = false;
     while (!this.stopped) {
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
@@ -163,11 +164,9 @@ export class BrainfuckInterpreter {
   in() {
     if (this.inputPtr < this.input.length) {
       this.data[this.dataPtr] = this.input.charCodeAt(this.inputPtr++);
-    } else {
-      if (!this.inputBeforeRun) {
-        console.log("waiting for input");
-        this.waitingForInput = true;
-      }
+    } else if (this.cliMode) {
+      console.log("waiting for input");
+      this.waitingForInput = true;
     }
   }
 
@@ -213,21 +212,28 @@ export class BrainfuckInterpreter {
   }
 
   setInput(input: string) {
-    this.input = input.replaceAll("\n", "\0");
+    this.input = input;
     this.inputPtr = 0;
-    this.waitingForInput = false;
-    if (this.waitingForInitialInput) {
-      while (!this.ioRef.current!.value.endsWith("\n\n")) {
-        this.appendOutput("\n");
-      }
+
+    if (!this.cliMode) {
+      this.input = this.input.substring(0, this.input.length - 1) + '\0';
+      this.appendLineBreak(true);
       this.appendOutput(RUN_MSG);
-      this.waitingForInitialInput = false;
     }
+
+    this.waitingForInput = false;
   }
 
   appendOutput(str: string) {
     this.ioRef.current!.value += str;
     this.prevIORef.current = this.ioRef.current!.value;
     this.ioRef.current!.scrollTop = this.ioRef.current!.scrollHeight;
+  }
+
+  appendLineBreak(doubled: boolean = false) {
+    const lineBreak = doubled ? '\n\n' : '\n';
+    while (!this.ioRef.current!.value.endsWith(lineBreak)) {
+      this.appendOutput("\n");
+    }
   }
 }

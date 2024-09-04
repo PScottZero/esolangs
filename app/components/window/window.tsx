@@ -1,12 +1,7 @@
 import Image from "next/image";
 import styles from "./window.module.scss";
 import { ReactElement } from "react";
-
-type ActionProps = {
-  name: string;
-  action: () => void;
-  disabled?: boolean;
-};
+import { Action, ActionProps } from "../action/action";
 
 type WindowProps = {
   title: string;
@@ -55,23 +50,6 @@ function TitleBarButtons(): ReactElement {
           height={28}
         />
       </TitleBarButton>
-    </span>
-  );
-}
-
-function Action({ name, action, disabled }: ActionProps): ReactElement {
-  return (
-    <span
-      onClick={action}
-      className={styles.action}
-      style={{
-        pointerEvents: disabled ? "none" : "auto",
-        color: disabled ? "gray" : "",
-        cursor: disabled ? "auto" : "pointer",
-      }}
-    >
-      <u>{name.substring(0, 1)}</u>
-      {name.substring(1)}
     </span>
   );
 }
