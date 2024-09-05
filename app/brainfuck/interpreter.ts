@@ -1,7 +1,8 @@
 import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x10000;
-const CMDS_MER_MS = 4096;
+const CMDS_PER_MS = 512;
+const MAX_CMDS_PER_ANIM_FRAME = 8912;
 const CMD_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
 const RUN_MSG = "### Running...\n\n";
 const INPUT_MSG = "### Input:\n\n";
@@ -30,7 +31,7 @@ export class BrainfuckInterpreter {
   constructor(
     ioRef: React.RefObject<HTMLTextAreaElement>,
     prevIoRef: React.MutableRefObject<string>,
-    setRunning: React.Dispatch<React.SetStateAction<boolean>>,
+    setRunning: React.Dispatch<React.SetStateAction<boolean>>
   ) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
@@ -80,7 +81,10 @@ export class BrainfuckInterpreter {
 
   _run(timestamp: number = Date.now()) {
     const now = Date.now();
-    const cmdCount = (now - timestamp) * CMDS_MER_MS;
+    const cmdCount = Math.min(
+      (now - timestamp) * CMDS_PER_MS,
+      MAX_CMDS_PER_ANIM_FRAME
+    );
     timestamp = now;
 
     for (let i = 0; i < cmdCount; i++) {
