@@ -1,3 +1,5 @@
+@import "./constants.scss";
+
 @font-face {
   font-family: "win95";
   src: url("/esolangs/fonts/W95FA.otf");
@@ -21,4 +23,24 @@ body {
   grid-template-areas: "sidebar content";
   grid-template-rows: 1fr;
   grid-template-columns: 6rem 1fr;
+}
+
+textarea {
+  border: none;
+  outline: none;
+  padding: 0.5rem;
+  font-family: inherit;
+  resize: none;
+  width: 100%;
+  height: 100%;
+  font-size: 1rem;
+  font-family: monospace;
+  text-wrap: nowrap;
+  color: $black;
+  background: $white;
+}
+
+.terminal {
+  color: $white;
+  background: $black;
 }

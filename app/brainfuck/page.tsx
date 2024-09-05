@@ -179,7 +179,7 @@ export default function Brainfuck() {
       >
         <textarea
           ref={ioRef}
-          className={styles.textArea + " " + styles.terminal}
+          className="terminal"
           name="terminal"
           onChange={setInput}
           spellCheck={false}

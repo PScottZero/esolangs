@@ -5,7 +5,6 @@ const COLORS = [
 ];
 const WHITE = "#FFFFFF";
 const BLACK = "#000000";
-const DEFAULT_PROG_SIZE = 24;
 
 enum Direction {
   Up,
@@ -19,18 +18,6 @@ type DirectionPtr = {
   y: number;
   dir: Direction;
 };
-
-function initProgram(width: number, height: number): string[][] {
-  const program = [];
-  for (let row = 0; row < height; row++) {
-    const programRow = [];
-    for (let col = 0; col < width; col++) {
-      programRow.push(WHITE);
-    }
-    program.push(programRow);
-  }
-  return program;
-}
 
 function coord(x: number, y: number) {
   return `(${x},${y})`;
@@ -47,7 +34,7 @@ export class PietInterpreter {
   constructor() {
     this.directionPtr = { x: 0, y: 0, dir: Direction.Right };
     this.codelChooser = Direction.Left;
-    this.program = initProgram(DEFAULT_PROG_SIZE, DEFAULT_PROG_SIZE);
+    this.program = [];
 
     this.coordToBlock = new Map();
     this.blockValues = new Map();
@@ -66,7 +53,7 @@ export class PietInterpreter {
 
   exploreColorBlock(x: number, y: number, color: string, blockIdx: number) {
     const c = coord(x, y);
-    
+
     const xInBounds = x >= 0 && x < this.program[0].length;
     const yInBounds = y >= 0 && y < this.program.length;
     if (!xInBounds || !yInBounds || this.coordToBlock.has(c)) return;
