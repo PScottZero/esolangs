@@ -1,10 +1,10 @@
-const COLORS = [
+export const COLORS = [
   ["#FFC0C0", "#FFFFC0", "#C0FFC0", "#C0FFFF", "#C0C0FF", "#FFC0FF"],
   ["#FF0000", "#FFFF00", "#00FF00", "#00FFFF", "#0000FF", "#FF00FF"],
   ["#C00000", "#C0C000", "#00C000", "#00C0C0", "#0000C0", "#C000C0"],
 ];
-const WHITE = "#FFFFFF";
-const BLACK = "#000000";
+export const WHITE = "#FFFFFF";
+export const BLACK = "#000000";
 
 enum Direction {
   Up,

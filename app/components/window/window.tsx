@@ -8,6 +8,7 @@ type WindowProps = {
   icon?: string;
   gridArea?: string;
   actions?: ActionProps[];
+  underActions?: ReactElement;
   children?: React.ReactNode;
 };
 
@@ -23,49 +24,19 @@ function TitleBarButton({
   );
 }
 
-function TitleBarButtons(): ReactElement {
-  return (
-    <span className={styles.titleBarButtons}>
-      <TitleBarButton>
-        <Image
-          src="/esolangs/icons/minimize.png"
-          alt="minimize"
-          width={32}
-          height={32}
-        />
-      </TitleBarButton>
-      <TitleBarButton>
-        <Image
-          src="/esolangs/icons/maximize.png"
-          alt="maximize"
-          width={32}
-          height={32}
-        />
-      </TitleBarButton>
-      <TitleBarButton>
-        <Image
-          src="/esolangs/icons/close.png"
-          alt="close"
-          width={32}
-          height={28}
-        />
-      </TitleBarButton>
-    </span>
-  );
-}
-
 export default function Window({
   title,
   icon,
-  actions,
   gridArea,
+  actions,
+  underActions,
   children,
 }: WindowProps) {
   const actionEls: ReactElement[] = [];
 
   actions?.forEach(({ name, action, disabled }: ActionProps) => {
     actionEls.push(
-      <Action key={name} name={name} action={action} disabled={disabled} />,
+      <Action key={name} name={name} action={action} disabled={disabled} />
     );
   });
   return (
@@ -84,9 +55,35 @@ export default function Window({
             />
             <p>{title}</p>
           </div>
-          <TitleBarButtons />
+          <span className={styles.titleBarButtons}>
+            <TitleBarButton>
+              <Image
+                src="/esolangs/icons/minimize.png"
+                alt="minimize"
+                width={32}
+                height={32}
+              />
+            </TitleBarButton>
+            <TitleBarButton>
+              <Image
+                src="/esolangs/icons/maximize.png"
+                alt="maximize"
+                width={32}
+                height={32}
+              />
+            </TitleBarButton>
+            <TitleBarButton>
+              <Image
+                src="/esolangs/icons/close.png"
+                alt="close"
+                width={32}
+                height={28}
+              />
+            </TitleBarButton>
+          </span>
         </div>
         <div className={styles.actions}>{actionEls}</div>
+        <div className={styles.underActions}>{underActions}</div>
         <div className={styles.outerContent}>
           <div className={styles.innerContent}>{children}</div>
         </div>

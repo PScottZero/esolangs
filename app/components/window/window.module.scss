@@ -9,8 +9,8 @@
 .innerWindow {
   @include two-color-border($white, $dark-gray);
   display: grid;
-  grid-template-areas: "titleBar" "actions" "content";
-  grid-template-rows: 2rem auto 1fr;
+  grid-template-areas: "titleBar" "actions" "underActions" "content";
+  grid-template-rows: 2rem auto auto 1fr;
   grid-template-columns: 1fr;
   height: 100%;
   padding: 3px;
@@ -96,4 +96,10 @@
   align-items: center;
   grid-area: actions;
   margin-top: 3px;
+}
+
+.underActions {
+  grid-area: underActions;
+  height: 100%;
+  width: 100%;
 }
