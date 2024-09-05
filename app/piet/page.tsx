@@ -44,7 +44,7 @@ export default function Piet() {
       CANVAS_SCALE
     );
     if (drawGrid) {
-      ctx.strokeStyle = "#555";
+      ctx.strokeStyle = "#7f7f7f";
       ctx.lineWidth = 1;
       ctx.strokeRect(
         x * CANVAS_SCALE,
@@ -58,7 +58,6 @@ export default function Piet() {
   const setPixel = (mouseX: number, mouseY: number) => {
     const canvas = canvasRef.current!;
     const canvasContainer = canvasContainerRef.current!;
-    console.log(canvasContainer.scrollLeft, canvasContainer.scrollTop);
     const diffX = mouseX - canvas.offsetLeft + canvasContainer.scrollLeft;
     const diffY = mouseY - canvas.offsetTop + canvasContainer.scrollTop;
     const x = Math.min(Math.floor(diffX / CANVAS_SCALE), width - 1);
@@ -86,18 +85,30 @@ export default function Piet() {
 
   const colors = [];
   for (let col = 0; col < COLORS[0].length; col++) {
-    for (let row = COLORS.length - 1; row >= 0; row--) {
+    for (let row = 0; row < COLORS.length; row++) {
       const _color = COLORS[row][col];
       colors.push(
-        <div style={{ background: _color }} onClick={() => setColor(_color)} />
+        <div
+          key={_color}
+          style={{ background: _color }}
+          onClick={() => setColor(_color)}
+        />
       );
     }
   }
   colors.push(
-    <div style={{ background: WHITE }} onClick={() => setColor(WHITE)} />
+    <div
+      key={WHITE}
+      style={{ background: WHITE }}
+      onClick={() => setColor(WHITE)}
+    />
   );
   colors.push(
-    <div style={{ background: BLACK }} onClick={() => setColor(BLACK)} />
+    <div
+      key={BLACK}
+      style={{ background: BLACK }}
+      onClick={() => setColor(BLACK)}
+    />
   );
 
   const colorChooser = (
@@ -146,10 +157,6 @@ export default function Piet() {
             width={width * CANVAS_SCALE}
             height={height * CANVAS_SCALE}
             onClick={(e) => setPixel(e.clientX, e.clientY)}
-            style={{
-              borderTop: gridOn ? "1px solid #555" : "",
-              borderLeft: gridOn ? "1px solid #555" : "",
-            }}
           />
         </div>
       </Window>
