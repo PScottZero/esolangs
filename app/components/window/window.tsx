@@ -8,7 +8,7 @@ type WindowProps = {
   icon?: string;
   gridArea?: string;
   actions?: ActionProps[];
-  underActions?: ReactElement;
+  sidebar?: ReactElement;
   children?: React.ReactNode;
 };
 
@@ -29,7 +29,7 @@ export default function Window({
   icon,
   gridArea,
   actions,
-  underActions,
+  sidebar,
   children,
 }: WindowProps) {
   const actionEls: ReactElement[] = [];
@@ -83,7 +83,7 @@ export default function Window({
           </span>
         </div>
         <div className={styles.actions}>{actionEls}</div>
-        <div className={styles.underActions}>{underActions}</div>
+        <div className={styles.sidebar}>{sidebar}</div>
         <div className={styles.outerContent}>
           <div className={styles.innerContent}>{children}</div>
         </div>

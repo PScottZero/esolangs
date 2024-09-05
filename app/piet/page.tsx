@@ -85,21 +85,25 @@ export default function Piet() {
   }, []);
 
   const colors = [];
-  for (const row of COLORS) {
-    for (const col of row) {
+  for (let col = 0; col < COLORS[0].length; col++) {
+    for (let row = COLORS.length - 1; row >= 0; row--) {
+      const _color = COLORS[row][col];
       colors.push(
-        <div style={{ background: col }} onClick={() => setColor(col)} />
+        <div style={{ background: _color }} onClick={() => setColor(_color)} />
       );
     }
   }
+  colors.push(
+    <div style={{ background: WHITE }} onClick={() => setColor(WHITE)} />
+  );
+  colors.push(
+    <div style={{ background: BLACK }} onClick={() => setColor(BLACK)} />
+  );
+
   const colorChooser = (
     <div className={styles.colorChooser}>
       <div className={styles.selectedColor} style={{ background: color }}></div>
-      <div className={styles.colorOptions}>
-        {colors}
-        <div className={styles.white} onClick={() => setColor(WHITE)} />
-        <div className={styles.black} onClick={() => setColor(BLACK)} />
-      </div>
+      <div className={styles.colorOptions}>{colors}</div>
     </div>
   );
 
@@ -134,7 +138,7 @@ export default function Piet() {
             action: toggleGrid,
           },
         ]}
-        underActions={colorChooser}
+        sidebar={colorChooser}
       >
         <div ref={canvasContainerRef} className={styles.canvasContainer}>
           <canvas

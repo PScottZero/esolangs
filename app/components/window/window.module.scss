@@ -9,9 +9,9 @@
 .innerWindow {
   @include two-color-border($white, $dark-gray);
   display: grid;
-  grid-template-areas: "titleBar" "actions" "underActions" "content";
-  grid-template-rows: 2rem auto auto 1fr;
-  grid-template-columns: 1fr;
+  grid-template-areas: "titleBar titleBar" "actions actions" "sidebar content";
+  grid-template-rows: 2rem auto 1fr;
+  grid-template-columns: auto 1fr;
   height: 100%;
   padding: 3px;
   background: $gray;
@@ -98,8 +98,7 @@
   margin-top: 3px;
 }
 
-.underActions {
-  grid-area: underActions;
-  height: 100%;
-  width: 100%;
+.sidebar {
+  grid-area: sidebar;
+  overflow-y: auto;
 }
