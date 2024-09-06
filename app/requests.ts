@@ -23,12 +23,26 @@ export function readTextFile(blob: Blob, onload: (result: string) => void) {
 
 export async function readImageFromServer(
   url: string,
-): Promise<HTMLImageElement> {
+  onload: (imageData: ImageData) => void,
+) {
   const blob = await readBlobFromServer(url);
   const objUrl = URL.createObjectURL(blob);
-  const img = new Image();
-  img.src = objUrl;
-  return img;
+  const imageEl = document.createElement("img") as HTMLImageElement;
+  imageEl.src = objUrl;
+  imageEl.onload = () => {
+    const imgCanvas = document.createElement("canvas") as HTMLCanvasElement;
+    imgCanvas.width = imageEl.width;
+    imgCanvas.height = imageEl.height;
+
+    const ctx = imgCanvas.getContext("2d")!;
+    ctx.drawImage(imageEl, 0, 0, imgCanvas.width, imgCanvas.height);
+
+    const data = ctx.getImageData(0, 0, imgCanvas.width, imgCanvas.height);
+    console.log(data);
+    imgCanvas.remove();
+
+    onload(data);
+  };
 }
 
 export async function readBlobFromServer(url: string): Promise<Blob> {
