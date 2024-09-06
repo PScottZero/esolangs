@@ -1,0 +1,39 @@
+@import "../../constants.scss";
+
+.outerButton {
+  margin-bottom: 0.5rem;
+  aspect-ratio: 1;
+}
+
+.innerButton {
+  @include flex-center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: $black;
+  background: $gray;
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  text-align: center;
+  line-height: 0.9;
+}
+
+.outerButton:not(:active) {
+  @include bottom-right-border($black);
+
+  .innerButton {
+    @include two-color-border($white, $dark-gray);
+    cursor: pointer;
+  }
+}
+
+.outerButton:active {
+  @include top-left-border($black);
+
+  .innerButton {
+    @include two-color-border($dark-gray, $white);
+    cursor: pointer;
+  }
+}

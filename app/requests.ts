@@ -38,7 +38,6 @@ export async function readImageFromServer(
     ctx.drawImage(imageEl, 0, 0, imgCanvas.width, imgCanvas.height);
 
     const data = ctx.getImageData(0, 0, imgCanvas.width, imgCanvas.height);
-    console.log(data);
     imgCanvas.remove();
 
     onload(data);

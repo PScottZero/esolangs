@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import React from "react";
 
 import programsJson from "../../public/programs.json";
-import { newAction } from "../components/action/action";
-import Programs from "../components/programs/programs";
-import Window from "../components/window/window";
+import { newAction } from "../.components/action/action";
+import Programs from "../.components/programs/programs";
+import Window from "../.components/window/window";
 import {
   readTextFileFromLocal,
   readTextFileFromServer,

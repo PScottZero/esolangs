@@ -2,7 +2,10 @@ import Image from "next/image";
 import { ReactElement } from "react";
 
 import { Action, ActionProps } from "../action/action";
+import Button from "../button/button";
 import styles from "./window.module.scss";
+
+const WINDOW_BUTTON_ICONS = ["minimize", "maximize", "close"];
 
 type WindowProps = {
   title: string;
@@ -12,18 +15,6 @@ type WindowProps = {
   sidebar?: ReactElement;
   children?: React.ReactNode;
 };
-
-function TitleBarButton({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>): ReactElement {
-  return (
-    <div className={styles.outerButton}>
-      <div className={styles.innerButton}>{children}</div>
-    </div>
-  );
-}
 
 export default function Window({
   title,
@@ -40,6 +31,22 @@ export default function Window({
       <Action key={name} name={name} action={action} disabled={disabled} />,
     );
   });
+
+  const titleBarButtons = [];
+  for (const icon of WINDOW_BUTTON_ICONS) {
+    titleBarButtons.push(
+      <Button key={icon} width="1.6rem" height="1.5rem">
+        <Image
+          className={styles.buttonImage}
+          src={`/esolangs/icons/${icon}.png`}
+          alt={icon}
+          width={32}
+          height={32}
+        />
+      </Button>,
+    );
+  }
+
   return (
     <div
       className={styles.outerWindow}
@@ -56,32 +63,7 @@ export default function Window({
             />
             <p>{title}</p>
           </div>
-          <span className={styles.titleBarButtons}>
-            <TitleBarButton>
-              <Image
-                src="/esolangs/icons/minimize.png"
-                alt="minimize"
-                width={32}
-                height={32}
-              />
-            </TitleBarButton>
-            <TitleBarButton>
-              <Image
-                src="/esolangs/icons/maximize.png"
-                alt="maximize"
-                width={32}
-                height={32}
-              />
-            </TitleBarButton>
-            <TitleBarButton>
-              <Image
-                src="/esolangs/icons/close.png"
-                alt="close"
-                width={32}
-                height={28}
-              />
-            </TitleBarButton>
-          </span>
+          <span className={styles.titleBarButtons}>{titleBarButtons}</span>
         </div>
         <div className={styles.actions}>{actionEls}</div>
         <div className={styles.sidebar}>{sidebar}</div>

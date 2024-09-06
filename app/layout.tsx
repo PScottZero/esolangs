@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import Sidebar from "./components/sidebar/sidebar";
+import Sidebar from "./.components/sidebar/sidebar";
 import "./globals.scss";
 import styles from "./layout.module.scss";
 

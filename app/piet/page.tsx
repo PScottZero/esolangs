@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 
 import programsJson from "../../public/programs.json";
-import { newAction } from "../components/action/action";
-import Programs from "../components/programs/programs";
-import Window from "../components/window/window";
+import { newAction } from "../.components/action/action";
+import Programs from "../.components/programs/programs";
+import Window from "../.components/window/window";
 import { readImageFromServer } from "../requests";
 import { BLACK, COLORS, PietInterpreter, WHITE } from "./interpreter";
 import styles from "./page.module.scss";
 
-const DEFAULT_ZOOM = 10;
+const DEFAULT_ZOOM = 8;
 const DEFAULT_PROG_SIZE = 16;
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 25;
@@ -206,7 +206,7 @@ export default function Piet() {
         icon="paint.png"
         gridArea="editor"
         actions={[
-          newAction("Run", () => {}),
+          newAction("Run", () => pietRef.current!.run(programRef.current)),
           newAction("Stop", () => {}, true),
           newAction("Load", () => {}),
           newAction("Save", () => {}),
