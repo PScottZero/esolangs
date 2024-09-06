@@ -8,6 +8,14 @@ export type ActionProps = {
   disabled?: boolean;
 };
 
+export function newAction(
+  name: string,
+  action: () => void,
+  disabled?: boolean,
+): ActionProps {
+  return { name: name, action: action, disabled: disabled };
+}
+
 export function Action({ name, action, disabled }: ActionProps): ReactElement {
   return (
     <span

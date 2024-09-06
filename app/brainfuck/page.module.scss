@@ -10,25 +10,3 @@
   gap: $gap-size;
   padding: $gap-size;
 }
-
-.programs {
-  display: flex;
-  padding: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.program {
-  width: 5rem;
-  text-align: center;
-
-  img {
-    margin-top: 0.5rem;
-    height: 3rem;
-    width: auto;
-  }
-}
-
-.program:active {
-  color: $white;
-  background: $blue;
-}

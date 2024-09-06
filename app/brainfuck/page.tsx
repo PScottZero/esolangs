@@ -1,60 +1,19 @@
 "use client";
 
-import Image from "next/image";
-import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import React from "react";
 
-import ProgramList from "../components/program-list/program-list";
-import Window from "./../components/window/window";
+import programsJson from "../../public/programs.json";
+import { newAction } from "../components/action/action";
+import Programs from "../components/programs/programs";
+import Window from "../components/window/window";
+import {
+  readTextFileFromLocal,
+  readTextFileFromServer,
+  saveTextFile,
+} from "../requests";
 import { BrainfuckInterpreter } from "./interpreter";
 import styles from "./page.module.scss";
-
-const DEFAULT_PROG = `
-[sierpinski.b -- display Sierpinski triangle
-(c) 2016 Daniel B. Cristofani
-http://brainfuck.org/]
-
-++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+[
-    -<<<[
-        ->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<
-    ]>.>+[>>]>+
-]
-
-[Shows an ASCII representation of the Sierpinski triangle
-(iteration 5).]
-`.trim();
-
-const PROGRAMS = [
-  "400quine.b",
-  "bsort.b",
-  "collatz.b",
-  "dbf2c.b",
-  "dbfi.b",
-  "dquine.b",
-  "dvorak.b",
-  "e.b",
-  "factorial2.b",
-  "fib.b",
-  "golden.b",
-  "head.b",
-  "impeccable.b",
-  "isort.b",
-  "jabh.b",
-  "life.b",
-  "numwarp.b",
-  "qsort.b",
-  "random.b",
-  "rot13.b",
-  "short.b",
-  "sierpinski.b",
-  "squares.b",
-  "squares2.b",
-  "thuemorse.b",
-  "tictactoe.b",
-  "utm.b",
-  "wc.b",
-  "xmastree.b",
-];
 
 function inputValid(io: string, prevIO: string): boolean {
   if (io.length <= prevIO.length) return false;
@@ -65,50 +24,22 @@ function inputValid(io: string, prevIO: string): boolean {
 }
 
 export default function Brainfuck() {
+  const [running, setRunning] = useState<boolean>(false);
+  const [cliMode, setCliMode] = useState<boolean>(true);
+
   const loadRef = useRef<HTMLInputElement>(null);
-  const saveRef = useRef<HTMLAnchorElement>(null);
   const progRef = useRef<HTMLTextAreaElement>(null);
   const ioRef = useRef<HTMLTextAreaElement>(null);
   const prevIORef = useRef<string>("");
-  const [running, setRunning] = useState<boolean>(false);
-  const [cliMode, setCliMode] = useState<boolean>(true);
-  const interpreter = useRef<BrainfuckInterpreter>(
+  const bfRef = useRef<BrainfuckInterpreter>(
     new BrainfuckInterpreter(ioRef, prevIORef, setRunning),
   );
 
-  const run = async () => {
-    await interpreter.current.run(progRef.current!.value, cliMode);
-  };
-
-  const stop = async () => await interpreter.current.stop();
-
-  const load = () => loadRef.current!.click();
-
-  const readProgramFromFileChooser = async (e: ChangeEvent<HTMLInputElement>) =>
-    readProgram(e.target.files![0]);
-
-  const readProgramFromServer = async (name: string) => {
-    const res = await fetch(`/esolangs/bin/brainfuck/${name}`);
-    if (res.ok) await readProgram(await res.blob());
-  };
-
-  const readProgram = async (file: Blob) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      progRef.current!.value = reader.result as string;
-    };
-    reader.readAsText(file);
-  };
-
-  const save = () => {
-    const file = new Blob([progRef.current!.value], { type: "text/plain" });
-    saveRef.current!.href = URL.createObjectURL(file);
-    saveRef.current!.download = "program.b";
-    saveRef.current!.click();
-  };
+  const getProgram = (): string => progRef.current!.value;
+  const setProgram = (program: string) => (progRef.current!.value = program);
 
   const setInput = () => {
-    if (interpreter.current.running) {
+    if (bfRef.current.running) {
       let io = ioRef.current!.value;
       let prevIO = prevIORef.current;
       if (!inputValid(io, prevIO)) {
@@ -117,17 +48,17 @@ export default function Brainfuck() {
       } else if (io.endsWith("\n")) {
         const input = io.substring(prevIO.length);
         prevIORef.current = io;
-        interpreter.current.setInput(input);
+        bfRef.current.setInput(input);
         console.log(`accepted input: ${input}`);
       }
     }
   };
 
-  const toggleCliMode = () => setCliMode(!cliMode);
-
   useEffect(() => {
-    progRef.current!.value = DEFAULT_PROG;
-    run();
+    readTextFileFromServer(programsJson.brainfuck.default, (result) => {
+      setProgram(result);
+      bfRef.current.run(result, cliMode);
+    });
   }, []);
 
   return (
@@ -137,25 +68,33 @@ export default function Brainfuck() {
         icon="editor.png"
         gridArea="editor"
         actions={[
-          { name: "Run", action: run },
-          { name: "Stop", action: stop, disabled: !running },
-          { name: "Load", action: load },
-          { name: "Save", action: save },
+          newAction("Run", () => bfRef.current.run(getProgram(), cliMode)),
+          newAction("Stop", () => bfRef.current.stop(), !running),
+          newAction("Load", () => loadRef.current!.click()),
+          newAction("Save", () => saveTextFile("program.b", getProgram())),
         ]}
       >
         <textarea ref={progRef} className={styles.textArea} name="editor" />
       </Window>
-      <ProgramList programs={PROGRAMS} onClick={readProgramFromServer} />
+      <Programs
+        programs={programsJson.brainfuck.programs}
+        onClick={(program) =>
+          readTextFileFromServer(
+            `${programsJson.brainfuck.path}/${program}`,
+            setProgram,
+          )
+        }
+      />
       <Window
         title="Terminal"
         icon="ms-dos.png"
         gridArea="terminal"
         actions={[
-          {
-            name: cliMode ? "Mode: CLI" : "Mode: Input/Output",
-            action: toggleCliMode,
-            disabled: running,
-          },
+          newAction(
+            `Mode: ${cliMode ? "CLI" : "In/Out"}`,
+            () => setCliMode(!cliMode),
+            running,
+          ),
         ]}
       >
         <textarea
@@ -171,9 +110,8 @@ export default function Brainfuck() {
         type="file"
         accept=".b,.bf"
         style={{ display: "none" }}
-        onChange={readProgramFromFileChooser}
+        onChange={(e) => readTextFileFromLocal(e, setProgram)}
       />
-      <a ref={saveRef} style={{ display: "none" }} />
     </main>
   );
 }

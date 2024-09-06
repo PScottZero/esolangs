@@ -1,21 +1,25 @@
 import Image from "next/image";
 
 import Window from "../window/window";
-import styles from "./program-list.module.scss";
+import styles from "./programs.module.scss";
 
-type ProgramListProps = {
+type ProgramsProps = {
   programs: string[];
   onClick: (program: string) => void;
   programIcon?: string;
   windowIcon?: string;
 };
 
-export default function ProgramList({
+function truncate(str: string, maxLength: number): string {
+  return str.length > maxLength ? `${str.substring(0, maxLength - 3)}...` : str;
+}
+
+export default function Programs({
   programs,
   onClick,
   programIcon,
   windowIcon,
-}: ProgramListProps) {
+}: ProgramsProps) {
   const programEls = [];
   for (const program of programs) {
     programEls.push(
@@ -30,7 +34,7 @@ export default function ProgramList({
           width={32}
           height={32}
         />
-        <p>{program}</p>
+        <p>{truncate(program, 16)}</p>
       </div>,
     );
   }

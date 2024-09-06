@@ -1,17 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
-import ProgramList from "../components/program-list/program-list";
+import programsJson from "../../public/programs.json";
+import { newAction } from "../components/action/action";
+import Programs from "../components/programs/programs";
 import Window from "../components/window/window";
 import { BLACK, COLORS, PietInterpreter, WHITE } from "./interpreter";
 import styles from "./page.module.scss";
 
 const CANVAS_SCALE = 20;
 const DEFAULT_PROG_SIZE = 16;
-
-const PROGRAMS = ["test1.png", "test2.png"];
 
 function initProgram(
   width: number = DEFAULT_PROG_SIZE,
@@ -111,37 +110,22 @@ export default function Piet() {
     drawPixel(x, y, gridOn);
   };
 
-  const drawCanvas = (drawGrid: boolean) => {
+  const drawCanvas = (toggleGrid: boolean = false) => {
+    let _gridOn = gridOn;
+    if (toggleGrid) {
+      _gridOn = !gridOn;
+      setGridOn(_gridOn);
+    }
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
-        drawPixel(y, x, drawGrid);
+        drawPixel(y, x, _gridOn);
       }
     }
-  };
-
-  const toggleGrid = () => {
-    drawCanvas(!gridOn);
-    setGridOn(!gridOn);
   };
 
   useEffect(() => {
     drawCanvas(gridOn);
   }, []);
-
-  const programEls = [];
-  for (const program of ["test1.png", "test2.png"]) {
-    programEls.push(
-      <div key={program} className={styles.program}>
-        <Image
-          src="/esolangs/icons/image.png"
-          alt="program"
-          width={32}
-          height={32}
-        />
-        <p>{program}</p>
-      </div>,
-    );
-  }
 
   return (
     <main className={styles.main}>
@@ -150,14 +134,11 @@ export default function Piet() {
         icon="paint.png"
         gridArea="editor"
         actions={[
-          { name: "Run", action: () => {} },
-          { name: "Stop", action: () => {}, disabled: true },
-          { name: "Load", action: () => {} },
-          { name: "Save", action: () => {} },
-          {
-            name: `Grid: ${gridOn ? "On" : "Off"}`,
-            action: toggleGrid,
-          },
+          newAction("Run", () => {}),
+          newAction("Stop", () => {}, true),
+          newAction("Load", () => {}),
+          newAction("Save", () => {}),
+          newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
         ]}
         sidebar={ColorChooser(color, setColor)}
       >
@@ -173,14 +154,11 @@ export default function Piet() {
       <Window title="Terminal" icon="ms-dos.png">
         <textarea className="terminal"></textarea>
       </Window>
-      <ProgramList
-        programs={PROGRAMS}
+      <Programs
+        programs={programsJson.piet.programs}
         programIcon="image.png"
         onClick={(program: string) => console.log(program)}
       />
-      <Window title="Programs" icon="folder.png">
-        <div className={styles.programs}>{programEls}</div>
-      </Window>
     </main>
   );
 }
