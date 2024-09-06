@@ -1,10 +1,11 @@
 "use client";
 
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { ReactElement } from "react";
 import Image from "next/image";
-import styles from "./sidebar.module.scss";
 import { useRouter } from "next/navigation";
+import { ReactElement } from "react";
+
+import styles from "./sidebar.module.scss";
 
 function esolang(
   router: AppRouterInstance,

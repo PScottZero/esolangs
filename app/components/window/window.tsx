@@ -1,7 +1,8 @@
 import Image from "next/image";
-import styles from "./window.module.scss";
 import { ReactElement } from "react";
+
 import { Action, ActionProps } from "../action/action";
+import styles from "./window.module.scss";
 
 type WindowProps = {
   title: string;
@@ -36,7 +37,7 @@ export default function Window({
 
   actions?.forEach(({ name, action, disabled }: ActionProps) => {
     actionEls.push(
-      <Action key={name} name={name} action={action} disabled={disabled} />
+      <Action key={name} name={name} action={action} disabled={disabled} />,
     );
   });
   return (

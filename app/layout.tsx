@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import styles from "./layout.module.scss";
-import "./globals.scss";
+
 import Sidebar from "./components/sidebar/sidebar";
+import "./globals.scss";
+import styles from "./layout.module.scss";
 
 export const metadata: Metadata = {
   title: "Esolangs",

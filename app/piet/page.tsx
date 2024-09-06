@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Window from "../components/window/window";
-import styles from "./page.module.scss";
-import { BLACK, COLORS, PietInterpreter, WHITE } from "./interpreter";
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+
+import ProgramList from "../components/program-list/program-list";
+import Window from "../components/window/window";
+import { BLACK, COLORS, PietInterpreter, WHITE } from "./interpreter";
+import styles from "./page.module.scss";
 
 const CANVAS_SCALE = 20;
 const DEFAULT_PROG_SIZE = 16;
 
+const PROGRAMS = ["test1.png", "test2.png"];
+
 function initProgram(
   width: number = DEFAULT_PROG_SIZE,
-  height: number = DEFAULT_PROG_SIZE
+  height: number = DEFAULT_PROG_SIZE,
 ): string[][] {
   const program = [];
   for (let row = 0; row < height; row++) {
@@ -22,6 +26,47 @@ function initProgram(
     program.push(programRow);
   }
   return program;
+}
+
+function ColorChooser(
+  selectedColor: string,
+  setColor: (color: string) => void,
+) {
+  const colors = [];
+  for (let col = 0; col < COLORS[0].length; col++) {
+    for (let row = 0; row < COLORS.length; row++) {
+      const _color = COLORS[row][col];
+      colors.push(
+        <div
+          key={_color}
+          style={{ background: _color }}
+          onClick={() => setColor(_color)}
+        />,
+      );
+    }
+  }
+
+  return (
+    <div className={styles.colorChooser}>
+      <div
+        className={styles.selectedColor}
+        style={{ background: selectedColor }}
+      />
+      <div className={styles.colorOptions}>
+        {colors}
+        <div
+          key={WHITE}
+          style={{ background: WHITE }}
+          onClick={() => setColor(WHITE)}
+        />
+        <div
+          key={BLACK}
+          style={{ background: BLACK }}
+          onClick={() => setColor(BLACK)}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default function Piet() {
@@ -41,7 +86,7 @@ export default function Piet() {
       x * CANVAS_SCALE,
       y * CANVAS_SCALE,
       CANVAS_SCALE,
-      CANVAS_SCALE
+      CANVAS_SCALE,
     );
     if (drawGrid) {
       ctx.strokeStyle = "#7f7f7f";
@@ -50,7 +95,7 @@ export default function Piet() {
         x * CANVAS_SCALE,
         y * CANVAS_SCALE,
         CANVAS_SCALE,
-        CANVAS_SCALE
+        CANVAS_SCALE,
       );
     }
   };
@@ -83,41 +128,6 @@ export default function Piet() {
     drawCanvas(gridOn);
   }, []);
 
-  const colors = [];
-  for (let col = 0; col < COLORS[0].length; col++) {
-    for (let row = 0; row < COLORS.length; row++) {
-      const _color = COLORS[row][col];
-      colors.push(
-        <div
-          key={_color}
-          style={{ background: _color }}
-          onClick={() => setColor(_color)}
-        />
-      );
-    }
-  }
-  colors.push(
-    <div
-      key={WHITE}
-      style={{ background: WHITE }}
-      onClick={() => setColor(WHITE)}
-    />
-  );
-  colors.push(
-    <div
-      key={BLACK}
-      style={{ background: BLACK }}
-      onClick={() => setColor(BLACK)}
-    />
-  );
-
-  const colorChooser = (
-    <div className={styles.colorChooser}>
-      <div className={styles.selectedColor} style={{ background: color }}></div>
-      <div className={styles.colorOptions}>{colors}</div>
-    </div>
-  );
-
   const programEls = [];
   for (const program of ["test1.png", "test2.png"]) {
     programEls.push(
@@ -129,7 +139,7 @@ export default function Piet() {
           height={32}
         />
         <p>{program}</p>
-      </div>
+      </div>,
     );
   }
 
@@ -149,7 +159,7 @@ export default function Piet() {
             action: toggleGrid,
           },
         ]}
-        sidebar={colorChooser}
+        sidebar={ColorChooser(color, setColor)}
       >
         <div ref={canvasContainerRef} className={styles.canvasContainer}>
           <canvas
@@ -163,6 +173,11 @@ export default function Piet() {
       <Window title="Terminal" icon="ms-dos.png">
         <textarea className="terminal"></textarea>
       </Window>
+      <ProgramList
+        programs={PROGRAMS}
+        programIcon="image.png"
+        onClick={(program: string) => console.log(program)}
+      />
       <Window title="Programs" icon="folder.png">
         <div className={styles.programs}>{programEls}</div>
       </Window>

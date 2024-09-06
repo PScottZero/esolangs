@@ -1,11 +1,13 @@
 "use client";
 
-import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
-import Window from "./../components/window/window";
-import styles from "./page.module.scss";
-import { BrainfuckInterpreter } from "./interpreter";
-import React from "react";
 import Image from "next/image";
+import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
+import React from "react";
+
+import ProgramList from "../components/program-list/program-list";
+import Window from "./../components/window/window";
+import { BrainfuckInterpreter } from "./interpreter";
+import styles from "./page.module.scss";
 
 const DEFAULT_PROG = `
 [sierpinski.b -- display Sierpinski triangle
@@ -71,7 +73,7 @@ export default function Brainfuck() {
   const [running, setRunning] = useState<boolean>(false);
   const [cliMode, setCliMode] = useState<boolean>(true);
   const interpreter = useRef<BrainfuckInterpreter>(
-    new BrainfuckInterpreter(ioRef, prevIORef, setRunning)
+    new BrainfuckInterpreter(ioRef, prevIORef, setRunning),
   );
 
   const run = async () => {
@@ -128,25 +130,6 @@ export default function Brainfuck() {
     run();
   }, []);
 
-  const programEls: ReactElement[] = [];
-  for (const program of PROGRAMS) {
-    programEls.push(
-      <div
-        key={program}
-        className={styles.program}
-        onClick={() => readProgramFromServer(program)}
-      >
-        <Image
-          src="/esolangs/icons/program.png"
-          alt="program"
-          width={32}
-          height={32}
-        />
-        <p>{program}</p>
-      </div>
-    );
-  }
-
   return (
     <main className={styles.main}>
       <Window
@@ -162,9 +145,7 @@ export default function Brainfuck() {
       >
         <textarea ref={progRef} className={styles.textArea} name="editor" />
       </Window>
-      <Window title="Programs" icon="folder.png" gridArea="programs">
-        <div className={styles.programs}>{programEls}</div>
-      </Window>
+      <ProgramList programs={PROGRAMS} onClick={readProgramFromServer} />
       <Window
         title="Terminal"
         icon="ms-dos.png"

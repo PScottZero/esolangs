@@ -31,7 +31,7 @@ export class BrainfuckInterpreter {
   constructor(
     ioRef: React.RefObject<HTMLTextAreaElement>,
     prevIoRef: React.MutableRefObject<string>,
-    setRunning: React.Dispatch<React.SetStateAction<boolean>>
+    setRunning: React.Dispatch<React.SetStateAction<boolean>>,
   ) {
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
@@ -83,7 +83,7 @@ export class BrainfuckInterpreter {
     const now = Date.now();
     const cmdCount = Math.min(
       (now - timestamp) * CMDS_PER_MS,
-      MAX_CMDS_PER_ANIM_FRAME
+      MAX_CMDS_PER_ANIM_FRAME,
     );
     timestamp = now;
 
