@@ -38,14 +38,39 @@ type BoundingCodels = [DirectionPtr, Codel][];
 class ColorBlock {
   id: number;
   color: string;
+  hue: number;
+  lightness: number;
   value: number;
   edges: Edges;
 
   constructor(id: number, color: string) {
     this.id = id;
     this.color = color;
+    [this.hue, this.lightness] = this.getHueAndLightness();
     this.value = 0;
     this.edges = new Map();
+  }
+
+  getHueAndLightness(): [number, number] {
+    for (let lightness = 0; lightness < COLORS.length; lightness++) {
+      for (let hue = 0; hue < COLORS[0].length; hue++) {
+        if (COLORS[lightness][hue] === this.color) {
+          return [hue, lightness];
+        }
+      }
+    }
+    return [0, 0];
+  }
+
+  getHueAndLightnessChange(nextColorBlock: ColorBlock): [number, number] {
+    return [
+      this.getChange(this.hue, nextColorBlock.hue, COLORS[0].length),
+      this.getChange(this.lightness, nextColorBlock.lightness, COLORS.length),
+    ];
+  }
+
+  getChange(val1: number, val2: number, wrap: number) {
+    return val1 <= val2 ? val2 - val1 : val2 + wrap - val1;
   }
 
   str(): string {
@@ -141,7 +166,9 @@ export class PietInterpreter extends Interpreter {
       case 0:
         switch (lightChange) {
           case 0:
-            // noop
+            // TODO: noop
+            console.log("white color blocks not implemented");
+            this.running = false;
             break;
           case 1:
             this.push(prevColorBlock.value);
@@ -220,11 +247,12 @@ export class PietInterpreter extends Interpreter {
   }
 
   readCmd(): [number, number] {
+    console.log("read start");
     let clockwiseCount = 0;
     let toggleCc: boolean = true;
 
     while (clockwiseCount < 4) {
-      const currBlock = this.colorBlocks.get(this.currColorBlock);
+      const currBlock = this.colorBlocks.get(this.currColorBlock)!;
       const [nextBlockId, nextCodel] = currBlock?.edges
         .get(this.dp)!
         .get(this.cc) ?? [undefined, undefined];
@@ -233,46 +261,25 @@ export class PietInterpreter extends Interpreter {
         const nextBlock = this.colorBlocks.get(nextBlockId)!;
         this.currColorBlock = nextBlockId;
         this.currCodel = nextCodel;
-        return this.getHueAndLightnessChange(
-          currBlock!.color,
-          nextBlock!.color,
-        );
+        console.log("read end");
+        return currBlock.getHueAndLightnessChange(nextBlock);
       }
 
       if (toggleCc) {
+        console.log("toggle");
         this.toggleCodelChooser();
       } else {
         clockwiseCount++;
+        console.log("rotate");
         this.rotateDirectionPtr();
       }
 
+      console.log("loop again");
       toggleCc = !toggleCc;
     }
+
+    console.log("read not found");
     return [-1, -1];
-  }
-
-  getHueAndLightnessChange(color1: string, color2: string): [number, number] {
-    const [hue1, light1] = this.getColorIndex(color1);
-    const [hue2, light2] = this.getColorIndex(color2);
-    return [
-      this.getChange(hue1, hue2, COLORS[0].length),
-      this.getChange(light1, light2, COLORS.length),
-    ];
-  }
-
-  getChange(val1: number, val2: number, wrap: number) {
-    return val1 <= val2 ? val2 - val1 : val2 + wrap - val1;
-  }
-
-  getColorIndex(color: string): [number, number] {
-    for (let light = 0; light < COLORS.length; light++) {
-      for (let hue = 0; hue < COLORS[0].length; hue++) {
-        if (COLORS[light][hue] === color) {
-          return [hue, light];
-        }
-      }
-    }
-    return [0, 0];
   }
 
   rotateDirectionPtr(steps: number = 1) {

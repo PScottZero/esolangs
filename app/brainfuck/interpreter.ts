@@ -84,10 +84,6 @@ export class BrainfuckInterpreter extends Interpreter {
     if (!this.waitingForInput) this.progPtr++;
   }
 
-  override skipStep(): boolean {
-    return this.waitingForInput;
-  }
-
   readCmd(): string {
     while (true) {
       if (this.progPtr >= this.program.length) break;

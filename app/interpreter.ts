@@ -2,9 +2,23 @@ const RUN_MSG = "### Running...\n\n";
 const INPUT_MSG = "### Input:\n\n";
 const STOP_MSG = "\n### Stopped.\n";
 
-const MAX_CMDS_PER_ANIM_FRAME = 8912;
+const MAX_CMDS_MULT = 16;
+
+function inputValid(io: string, prevIO: string): boolean {
+  if (io.length <= prevIO.length) return false;
+  for (let i = 0; i < prevIO.length; i++) {
+    if (io.at(i) !== prevIO.at(i)) return false;
+  }
+  return true;
+}
 
 export abstract class Interpreter {
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // Class Vars + Constructor
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
   cmdsPerMs: number;
 
   input: string = "";
@@ -27,33 +41,22 @@ export abstract class Interpreter {
     setRunning: React.Dispatch<React.SetStateAction<boolean>>,
   ) {
     this.cmdsPerMs = cmdsPerMs;
-
     this.ioRef = ioRef;
     this.prevIORef = prevIORef;
     this.setRunning = setRunning;
   }
 
-  reset(cliMode: boolean = true) {
-    this.input = "";
-    this.inputPtr = 0;
-
-    const message = cliMode ? RUN_MSG : INPUT_MSG;
-    this.ioRef.current!.value = message;
-    this.prevIORef.current = message;
-
-    this.waitingForInput = !cliMode;
-    this.cliMode = cliMode;
-
-    this.running = true;
-    this.setRunning(true);
-    this.stopped = false;
-  }
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // Control Flow
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   _run(timestamp: number = Date.now()) {
     const now = Date.now();
     const cmdCount = Math.min(
       (now - timestamp) * this.cmdsPerMs,
-      MAX_CMDS_PER_ANIM_FRAME,
+      this.cmdsPerMs * MAX_CMDS_MULT,
     );
     timestamp = now;
 
@@ -74,10 +77,6 @@ export abstract class Interpreter {
 
   abstract step(): void;
 
-  skipStep(): boolean {
-    return false;
-  }
-
   async stop(): Promise<void> {
     this.running = false;
     while (!this.stopped) {
@@ -86,17 +85,51 @@ export abstract class Interpreter {
     this.appendOutput("");
   }
 
-  setInput(input: string) {
-    this.input = input;
+  reset(cliMode: boolean = true) {
+    this.input = "";
     this.inputPtr = 0;
 
-    if (!this.cliMode) {
-      this.input = this.input.substring(0, this.input.length - 1) + "\0";
-      this.appendLineBreak(true);
-      this.appendOutput(RUN_MSG);
-    }
+    const message = cliMode ? RUN_MSG : INPUT_MSG;
+    this.ioRef.current!.value = message;
+    this.prevIORef.current = message;
 
-    this.waitingForInput = false;
+    this.waitingForInput = !cliMode;
+    this.cliMode = cliMode;
+
+    this.running = true;
+    this.setRunning(true);
+    this.stopped = false;
+  }
+
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // Input + Output
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  setInput() {
+    if (this.running) {
+      let io = this.ioRef.current!.value;
+      let prevIO = this.prevIORef.current;
+      if (!inputValid(io, prevIO)) {
+        io = this.prevIORef.current;
+        this.ioRef.current!.value = io;
+      } else if (io.endsWith("\n")) {
+        this.prevIORef.current = io;
+        this.input = io.substring(prevIO.length);
+        this.inputPtr = 0;
+
+        if (!this.cliMode) {
+          this.input = this.input.substring(0, this.input.length - 1) + "\0";
+          this.appendLineBreak(true);
+          this.appendOutput(RUN_MSG);
+        }
+
+        this.waitingForInput = false;
+
+        console.log(`accepted input: ${this.input}`);
+      }
+    }
   }
 
   appendOutput(str: string) {

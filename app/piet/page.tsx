@@ -12,8 +12,10 @@ import styles from "./page.module.scss";
 
 const DEFAULT_ZOOM = 8;
 const DEFAULT_PROG_SIZE = 16;
-const ZOOM_MIN = 1;
-const ZOOM_MAX = 25;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 50;
+const MAX_CANVAS_PXS = 4096 * 4096;
+const CANVAS_PADDING = 128;
 
 function initProgram(
   width: number = DEFAULT_PROG_SIZE,
@@ -72,32 +74,25 @@ function ColorChooser(
 }
 
 export default function Piet() {
-  const pietRef = useRef<PietInterpreter>(new PietInterpreter());
+  const [running, setRunning] = useState<boolean>(false);
+  // const [cliMode, setCliMode] = useState<boolean>(true);
+  const [color, setColor] = useState<string>(WHITE);
+  const [gridOn, setGridOn] = useState<boolean>(false);
+
   const programRef = useRef<string[][]>(initProgram());
+  const loadRef = useRef<HTMLInputElement>(null);
+  const progRef = useRef<HTMLTextAreaElement>(null);
+  const ioRef = useRef<HTMLTextAreaElement>(null);
+  const prevIORef = useRef<string>("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const shiftPressedRef = useRef<boolean>(false);
   const widthRef = useRef<number>(DEFAULT_PROG_SIZE);
   const heightRef = useRef<number>(DEFAULT_PROG_SIZE);
   const zoomRef = useRef<number>(DEFAULT_ZOOM);
-  const [color, setColor] = useState<string>(WHITE);
-  const [gridOn, setGridOn] = useState<boolean>(true);
-  const [redraw, setRedraw] = useState<boolean>(false);
-
-  const getCanvasWidth = () => canvasRef.current!.width;
-  const setCanvasWidth = () =>
-    (canvasRef.current!.width = widthRef.current * zoomRef.current);
-  const getCanvasHeight = () => canvasRef.current!.height;
-  const setCanvasHeight = () =>
-    (canvasRef.current!.height = heightRef.current * zoomRef.current);
-  const setWidth = (width: number) => {
-    widthRef.current = width;
-    setCanvasWidth();
-  };
-  const setHeight = (height: number) => {
-    heightRef.current = height;
-    setCanvasHeight();
-  };
+  const pietRef = useRef<PietInterpreter>(
+    new PietInterpreter(ioRef, prevIORef, setRunning),
+  );
 
   const drawPixel = (x: number, y: number, drawGrid: boolean) => {
     const zoom = zoomRef.current;
@@ -106,7 +101,7 @@ export default function Piet() {
     ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
     if (drawGrid) {
       ctx.strokeStyle = "#7f7f7f";
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.5;
       ctx.strokeRect(x * zoom, y * zoom, zoom, zoom);
     }
   };
@@ -124,16 +119,18 @@ export default function Piet() {
   };
 
   const drawCanvas = (toggleGrid: boolean = false) => {
-    let _gridOn = gridOn;
-    if (toggleGrid) {
-      _gridOn = !gridOn;
-      setGridOn(_gridOn);
-    }
+    let _gridOn = toggleGrid ? !gridOn : gridOn;
+
+    canvasRef.current!.width = widthRef.current * zoomRef.current;
+    canvasRef.current!.height = heightRef.current * zoomRef.current;
+
     for (let y = 0; y < heightRef.current; y++) {
       for (let x = 0; x < widthRef.current; x++) {
         drawPixel(x, y, _gridOn);
       }
     }
+
+    setGridOn(_gridOn);
   };
 
   const loadImage = async (image: string) => {
@@ -148,22 +145,47 @@ export default function Piet() {
           programRef.current![y][x] = `#${r}${g}${b}`;
         }
       }
-      setWidth(data.width);
-      setHeight(data.height);
-      setRedraw(true);
+
+      const containerWidth =
+        canvasContainerRef.current!.clientWidth - CANVAS_PADDING;
+      const containerHeight =
+        canvasContainerRef.current!.clientHeight - CANVAS_PADDING;
+
+      let zoom = MIN_ZOOM;
+      while (zoom < MAX_ZOOM) {
+        zoom++;
+        const canvasWidth = data.width * (zoom + 1);
+        const canvasHeight = data.height * (zoom + 1);
+        if (canvasWidth > containerWidth || canvasHeight > containerHeight) {
+          break;
+        }
+      }
+      zoomRef.current = zoom;
+      widthRef.current = data.width;
+      heightRef.current = data.height;
+
+      drawCanvas();
     });
   };
 
   const wheelListener = (e: WheelEvent) => {
     if (shiftPressedRef.current) {
+      const oldZoom = zoomRef.current;
       const dir = e.deltaY <= 0 ? 1 : -1;
       zoomRef.current = Math.max(
-        ZOOM_MIN,
-        Math.min(ZOOM_MAX, zoomRef.current + dir),
+        MIN_ZOOM,
+        Math.min(MAX_ZOOM, zoomRef.current + dir),
       );
-      setCanvasWidth();
-      setCanvasHeight();
-      setRedraw(true);
+
+      const newWidth = widthRef.current * zoomRef.current;
+      const newHeight = heightRef.current * zoomRef.current;
+      const pixelCount = newWidth * newHeight;
+
+      if (pixelCount <= MAX_CANVAS_PXS) {
+        drawCanvas();
+      } else {
+        zoomRef.current = oldZoom;
+      }
     }
   };
 
@@ -177,12 +199,9 @@ export default function Piet() {
 
   const init = async () => {
     await loadImage(programsJson.piet.default);
-    drawCanvas();
   };
 
   useEffect(() => {
-    setWidth(DEFAULT_PROG_SIZE);
-    setHeight(DEFAULT_PROG_SIZE);
     init();
     addEventListener("wheel", wheelListener);
     addEventListener("keyup", keyupListener);
@@ -194,11 +213,6 @@ export default function Piet() {
     };
   }, []);
 
-  if (redraw) {
-    drawCanvas();
-    setRedraw(false);
-  }
-
   return (
     <main className={styles.main}>
       <Window
@@ -206,11 +220,12 @@ export default function Piet() {
         icon="paint.png"
         gridArea="editor"
         actions={[
-          newAction("Run", () => pietRef.current!.run(programRef.current)),
-          newAction("Stop", () => {}, true),
+          // newAction("Run", () => pietRef.current!.run(programRef.current)),
+          newAction("Run", () => {}),
+          newAction("Stop", () => pietRef.current!.stop(), !running),
           newAction("Load", () => {}),
           newAction("Save", () => {}),
-          newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
+          // newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
         ]}
         sidebar={ColorChooser(color, setColor)}
       >
@@ -222,7 +237,13 @@ export default function Piet() {
         </div>
       </Window>
       <Window title="Terminal" icon="ms-dos.png">
-        <textarea className="terminal"></textarea>
+        <textarea
+          ref={ioRef}
+          className="terminal"
+          name="terminal"
+          onChange={() => pietRef.current.setInput()}
+          spellCheck={false}
+        />
       </Window>
       <Programs
         programs={programsJson.piet.programs}

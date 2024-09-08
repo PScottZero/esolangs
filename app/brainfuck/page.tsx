@@ -15,14 +15,6 @@ import {
 import { BrainfuckInterpreter } from "./interpreter";
 import styles from "./page.module.scss";
 
-function inputValid(io: string, prevIO: string): boolean {
-  if (io.length <= prevIO.length) return false;
-  for (let i = 0; i < prevIO.length; i++) {
-    if (io.at(i) !== prevIO.at(i)) return false;
-  }
-  return true;
-}
-
 export default function Brainfuck() {
   const [running, setRunning] = useState<boolean>(false);
   const [cliMode, setCliMode] = useState<boolean>(true);
@@ -37,22 +29,6 @@ export default function Brainfuck() {
 
   const getProgram = (): string => progRef.current!.value;
   const setProgram = (program: string) => (progRef.current!.value = program);
-
-  const setInput = () => {
-    if (bfRef.current.running) {
-      let io = ioRef.current!.value;
-      let prevIO = prevIORef.current;
-      if (!inputValid(io, prevIO)) {
-        io = prevIORef.current;
-        ioRef.current!.value = io;
-      } else if (io.endsWith("\n")) {
-        const input = io.substring(prevIO.length);
-        prevIORef.current = io;
-        bfRef.current.setInput(input);
-        console.log(`accepted input: ${input}`);
-      }
-    }
-  };
 
   useEffect(() => {
     readTextFileFromServer(programsJson.brainfuck.default, (result) => {
@@ -101,7 +77,7 @@ export default function Brainfuck() {
           ref={ioRef}
           className="terminal"
           name="terminal"
-          onChange={setInput}
+          onChange={() => bfRef.current.setInput()}
           spellCheck={false}
         />
       </Window>
