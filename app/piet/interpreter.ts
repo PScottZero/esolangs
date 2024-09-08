@@ -1,3 +1,5 @@
+import { Interpreter } from "../interpreter";
+
 export const COLORS = [
   ["#ffc0c0", "#ffffc0", "#c0ffc0", "#c0ffff", "#c0c0ff", "#ffc0ff"],
   ["#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#ff00ff"],
@@ -5,6 +7,8 @@ export const COLORS = [
 ];
 export const WHITE = "#ffffff";
 export const BLACK = "#000000";
+
+const CMDS_PER_MS = 512;
 
 class Codel {
   x: number;
@@ -56,99 +60,170 @@ class ColorBlock {
   }
 }
 
-enum PietCommand {
-  Noop,
-  Push,
-  Pop,
-  Add,
-  Subtract,
-  Multiply,
-  Divide,
-  Mod,
-  Not,
-  Greater,
-  Pointer,
-  Switch,
-  Duplicate,
-  Roll,
-  InNumber,
-  InChar,
-  OutNumber,
-  OutChar,
+export enum DirectionPtr {
+  Up,
+  Right,
+  Down,
+  Left,
 }
 
-export enum DirectionPtr {
-  Up = "up",
-  Down = "down",
-  Left = "left",
-  Right = "right",
-}
+const DIRECTIONS = [
+  DirectionPtr.Up,
+  DirectionPtr.Right,
+  DirectionPtr.Down,
+  DirectionPtr.Left,
+];
 
 export enum CodelChooser {
-  Left = "left",
-  Right = "right",
+  Left,
+  Right,
 }
 
-export class PietInterpreter {
+export class PietInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Class Vars
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  pixels: string[][];
-  width: number;
-  height: number;
-  colorBlocks: Map<number, ColorBlock>;
-
-  dp: DirectionPtr;
-  cc: CodelChooser;
-  currColorBlock: number;
-  currCodel: Codel;
-
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Constructor
+  // Class Vars + Constructor
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  constructor() {
-    this.pixels = [];
-    this.width = 0;
-    this.height = 0;
-    this.colorBlocks = new Map();
+  pixels: string[][] = [];
+  width: number = 0;
+  height: number = 0;
+  colorBlocks: Map<number, ColorBlock> = new Map();
+  stack: number[] = [];
 
-    this.dp = DirectionPtr.Right;
-    this.cc = CodelChooser.Left;
-    this.currColorBlock = 0;
-    this.currCodel = new Codel(0, 0);
+  dp: DirectionPtr = DirectionPtr.Right;
+  cc: CodelChooser = CodelChooser.Left;
+  currColorBlock: number = 0;
+  currCodel: Codel = new Codel(0, 0);
+
+  constructor(
+    ioRef: React.RefObject<HTMLTextAreaElement>,
+    prevIORef: React.MutableRefObject<string>,
+    setRunning: React.Dispatch<React.SetStateAction<boolean>>,
+  ) {
+    super(CMDS_PER_MS, ioRef, prevIORef, setRunning);
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Run + Step + Stop
+  // Control Flow
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  run(pixels: string[][]) {
+  run(pixels: string[][], cliMode: boolean = false) {
     this.pixels = pixels;
     this.width = pixels[0].length;
     this.height = pixels.length;
     this.colorBlocks = new Map();
-
-    this.initColorBlocks();
+    this.stack = [];
 
     this.dp = DirectionPtr.Right;
     this.cc = CodelChooser.Left;
     this.currColorBlock = 0;
     this.currCodel = new Codel(0, 0);
+
+    this.reset(cliMode);
+    this.initColorBlocks();
+    this._run();
+  }
+
+  step() {
+    const prevColorBlock = this.colorBlocks.get(this.currColorBlock)!;
+    const [hueChange, lightChange] = this.readCmd();
+
+    if (hueChange === -1) {
+      this.running = false;
+      return;
+    }
+
+    switch (hueChange) {
+      case 0:
+        switch (lightChange) {
+          case 0:
+            // noop
+            break;
+          case 1:
+            this.push(prevColorBlock.value);
+            break;
+          case 2:
+            this.pop();
+            break;
+        }
+        break;
+      case 1:
+        switch (lightChange) {
+          case 0:
+            this.add();
+            break;
+          case 1:
+            this.subtract();
+            break;
+          case 2:
+            this.multiply();
+            break;
+        }
+        break;
+      case 2:
+        switch (lightChange) {
+          case 0:
+            this.divide();
+            break;
+          case 1:
+            this.mod();
+            break;
+          case 2:
+            this.not();
+            break;
+        }
+        break;
+      case 3:
+        switch (lightChange) {
+          case 0:
+            this.greater();
+            break;
+          case 1:
+            this.pointer();
+            break;
+          case 2:
+            this.switch();
+            break;
+        }
+        break;
+      case 4:
+        switch (lightChange) {
+          case 0:
+            this.duplicate();
+            break;
+          case 1:
+            this.roll();
+            break;
+          case 2:
+            this.inNumber();
+            break;
+        }
+        break;
+      case 5:
+        switch (lightChange) {
+          case 0:
+            this.inChar();
+            break;
+          case 1:
+            this.outNumber();
+            break;
+          case 2:
+            this.outChar();
+            break;
+        }
+        break;
+    }
   }
 
   readCmd(): [number, number] {
-    let hueChange = 0;
-    let lightnessChange = 0;
+    let clockwiseCount = 0;
+    let toggleCc: boolean = true;
 
-    while (true) {
+    while (clockwiseCount < 4) {
       const currBlock = this.colorBlocks.get(this.currColorBlock);
       const [nextBlockId, nextCodel] = currBlock?.edges
         .get(this.dp)!
@@ -163,7 +238,17 @@ export class PietInterpreter {
           nextBlock!.color,
         );
       }
+
+      if (toggleCc) {
+        this.toggleCodelChooser();
+      } else {
+        clockwiseCount++;
+        this.rotateDirectionPtr();
+      }
+
+      toggleCc = !toggleCc;
     }
+    return [-1, -1];
   }
 
   getHueAndLightnessChange(color1: string, color2: string): [number, number] {
@@ -188,6 +273,120 @@ export class PietInterpreter {
       }
     }
     return [0, 0];
+  }
+
+  rotateDirectionPtr(steps: number = 1) {
+    const step = steps >= 0 ? 1 : -1;
+    steps = Math.abs(steps);
+    let dirIdx = DIRECTIONS.indexOf(this.dp);
+    for (let i = 0; i < steps; i++) {
+      dirIdx += step;
+      if (dirIdx < 0) dirIdx = 3;
+      if (dirIdx > 3) dirIdx = 0;
+      this.dp = DIRECTIONS[dirIdx];
+    }
+  }
+
+  toggleCodelChooser(steps: number = 1) {
+    steps = Math.abs(steps);
+    for (let i = 0; i < steps; i++) {
+      this.cc =
+        this.cc === CodelChooser.Left ? CodelChooser.Right : CodelChooser.Left;
+    }
+  }
+
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // Commands
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  push(value: number) {
+    this.stack.push(value);
+  }
+
+  pop(): number {
+    return this.stack.pop() ?? 0;
+  }
+
+  add() {
+    const b = this.pop();
+    const a = this.pop();
+    this.stack.push(a + b);
+  }
+
+  subtract() {
+    const b = this.pop();
+    const a = this.pop();
+    this.stack.push(a - b);
+  }
+
+  multiply() {
+    const b = this.pop();
+    const a = this.pop();
+    this.stack.push(a * b);
+  }
+
+  divide() {
+    const b = this.pop();
+    const a = this.pop();
+    if (b !== 0) this.stack.push(a / b);
+  }
+
+  mod() {
+    const b = this.pop();
+    const a = this.pop();
+    this.stack.push(a < 0 ? ((a % b) + b) % b : a % b);
+  }
+
+  not() {
+    this.stack.push(this.pop() === 0 ? 1 : 0);
+  }
+
+  greater() {
+    const b = this.pop();
+    const a = this.pop();
+    this.stack.push(a > b ? 1 : 0);
+  }
+
+  pointer() {
+    this.rotateDirectionPtr(this.pop());
+  }
+
+  switch() {
+    this.toggleCodelChooser(this.pop());
+  }
+
+  duplicate() {
+    const value = this.pop();
+    this.push(value);
+    this.push(value);
+  }
+
+  roll() {
+    // TODO
+    console.log("roll not implemented");
+    this.running = false;
+  }
+
+  inNumber() {
+    if (this.inputPtr < this.input.length) {
+      this.push(parseInt(this.input.at(this.inputPtr++)!));
+    }
+  }
+
+  inChar() {
+    if (this.inputPtr < this.input.length) {
+      this.push(this.input.at(this.inputPtr++)!.charCodeAt(0));
+    }
+  }
+
+  outNumber() {
+    this.appendOutput(this.pop().toString());
+  }
+
+  outChar() {
+    this.appendOutput(String.fromCharCode(this.pop()));
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

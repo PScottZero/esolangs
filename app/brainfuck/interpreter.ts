@@ -1,73 +1,40 @@
+import { Interpreter } from "../interpreter";
 import { createBytes } from "../utils";
 
 const DATA_SIZE = 0x10000;
 const CMDS_PER_MS = 512;
-const MAX_CMDS_PER_ANIM_FRAME = 8912;
 const CMD_CHARS = [">", "<", "+", "-", ".", ",", "[", "]"];
-const RUN_MSG = "### Running...\n\n";
-const INPUT_MSG = "### Input:\n\n";
-const STOP_MSG = "\n### Stopped.\n";
 
-export class BrainfuckInterpreter {
+export class BrainfuckInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Class Vars
+  // Class Vars + Constructor
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  data: Uint8Array;
-  dataPtr: number;
+  data: Uint8Array = createBytes(DATA_SIZE);
+  dataPtr: number = 0;
 
-  program: string;
-  progPtr: number;
-
-  input: string;
-  inputPtr: number;
-
-  ioRef: React.RefObject<HTMLTextAreaElement>;
-  prevIORef: React.MutableRefObject<string>;
-
-  waitingForInput: boolean;
-  cliMode: boolean;
-
-  running: boolean;
-  setRunning: React.Dispatch<React.SetStateAction<boolean>>;
-  stopped: boolean;
-
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Constructor
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  program: string = "";
+  progPtr: number = 0;
 
   constructor(
     ioRef: React.RefObject<HTMLTextAreaElement>,
     prevIoRef: React.MutableRefObject<string>,
     setRunning: React.Dispatch<React.SetStateAction<boolean>>,
   ) {
+    super(CMDS_PER_MS, ioRef, prevIoRef, setRunning);
+
     this.data = createBytes(DATA_SIZE);
     this.dataPtr = 0;
 
     this.program = "";
     this.progPtr = 0;
-
-    this.input = "";
-    this.inputPtr = 0;
-
-    this.ioRef = ioRef;
-    this.prevIORef = prevIoRef;
-
-    this.waitingForInput = false;
-    this.cliMode = true;
-
-    this.running = false;
-    this.setRunning = setRunning;
-    this.stopped = true;
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Run + Step + Stop
+  // Control Flow
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -80,53 +47,8 @@ export class BrainfuckInterpreter {
     this.program = program;
     this.progPtr = 0;
 
-    this.input = "";
-    this.inputPtr = 0;
-
-    const initialIO = cliMode ? RUN_MSG : INPUT_MSG;
-    this.ioRef.current!.value = initialIO;
-    this.prevIORef.current = initialIO;
-
-    this.waitingForInput = !cliMode;
-    this.cliMode = cliMode;
-
-    this.running = true;
-    this.setRunning(true);
-    this.stopped = false;
-
+    this.reset(cliMode);
     this._run();
-  }
-
-  _run(timestamp: number = Date.now()) {
-    const now = Date.now();
-    const cmdCount = Math.min(
-      (now - timestamp) * CMDS_PER_MS,
-      MAX_CMDS_PER_ANIM_FRAME,
-    );
-    timestamp = now;
-
-    for (let i = 0; i < cmdCount; i++) {
-      if (this.waitingForInput) break;
-      this.step();
-      if (!this.running) {
-        this.stopped = true;
-        this.setRunning(false);
-        this.appendLineBreak();
-        this.appendOutput(STOP_MSG);
-        return;
-      }
-    }
-
-    requestAnimationFrame(() => this._run(timestamp));
-  }
-
-  async stop(): Promise<void> {
-    this.running = false;
-    this.waitingForInput = false;
-    while (!this.stopped) {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    }
-    this.appendOutput("");
   }
 
   step() {
@@ -160,6 +82,20 @@ export class BrainfuckInterpreter {
         break;
     }
     if (!this.waitingForInput) this.progPtr++;
+  }
+
+  override skipStep(): boolean {
+    return this.waitingForInput;
+  }
+
+  readCmd(): string {
+    while (true) {
+      if (this.progPtr >= this.program.length) break;
+      const ch = this.program.at(this.progPtr)!;
+      if (CMD_CHARS.includes(ch)) return ch;
+      this.progPtr++;
+    }
+    return "";
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -224,47 +160,5 @@ export class BrainfuckInterpreter {
     }
 
     this.progPtr = 0;
-  }
-
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Input + Output
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  readCmd(): string {
-    while (true) {
-      if (this.progPtr >= this.program.length) break;
-      const ch = this.program.at(this.progPtr)!;
-      if (CMD_CHARS.includes(ch)) return ch;
-      this.progPtr++;
-    }
-    return "";
-  }
-
-  setInput(input: string) {
-    this.input = input;
-    this.inputPtr = 0;
-
-    if (!this.cliMode) {
-      this.input = this.input.substring(0, this.input.length - 1) + "\0";
-      this.appendLineBreak(true);
-      this.appendOutput(RUN_MSG);
-    }
-
-    this.waitingForInput = false;
-  }
-
-  appendOutput(str: string) {
-    this.ioRef.current!.value += str;
-    this.prevIORef.current = this.ioRef.current!.value;
-    this.ioRef.current!.scrollTop = this.ioRef.current!.scrollHeight;
-  }
-
-  appendLineBreak(doubled: boolean = false) {
-    const lineBreak = doubled ? "\n\n" : "\n";
-    while (!this.ioRef.current!.value.endsWith(lineBreak)) {
-      this.appendOutput("\n");
-    }
   }
 }
