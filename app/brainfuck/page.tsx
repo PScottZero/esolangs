@@ -64,7 +64,6 @@ export default function Brainfuck() {
       <Window
         title="Terminal"
         icon="ms-dos.png"
-        gridArea="terminal"
         actions={[
           newAction(
             `Mode: ${cliMode ? "CLI" : "In/Out"}`,

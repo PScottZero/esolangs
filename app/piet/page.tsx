@@ -75,7 +75,7 @@ function ColorChooser(
 
 export default function Piet() {
   const [running, setRunning] = useState<boolean>(false);
-  // const [cliMode, setCliMode] = useState<boolean>(true);
+  const [cliMode, setCliMode] = useState<boolean>(true);
   const [color, setColor] = useState<string>(WHITE);
   const [gridOn, setGridOn] = useState<boolean>(false);
 
@@ -120,6 +120,7 @@ export default function Piet() {
 
   const drawCanvas = (toggleGrid: boolean = false) => {
     let _gridOn = toggleGrid ? !gridOn : gridOn;
+    setGridOn(_gridOn);
 
     canvasRef.current!.width = widthRef.current * zoomRef.current;
     canvasRef.current!.height = heightRef.current * zoomRef.current;
@@ -129,8 +130,6 @@ export default function Piet() {
         drawPixel(x, y, _gridOn);
       }
     }
-
-    setGridOn(_gridOn);
   };
 
   const loadImage = async (image: string) => {
@@ -211,7 +210,7 @@ export default function Piet() {
       removeEventListener("keyup", keyupListener);
       removeEventListener("keydown", keydownListener);
     };
-  }, []);
+  }, [gridOn]);
 
   return (
     <main className={styles.main}>
@@ -220,12 +219,13 @@ export default function Piet() {
         icon="paint.png"
         gridArea="editor"
         actions={[
-          // newAction("Run", () => pietRef.current!.run(programRef.current)),
-          newAction("Run", () => {}),
+          newAction("Run", () =>
+            pietRef.current!.run(programRef.current, cliMode),
+          ),
           newAction("Stop", () => pietRef.current!.stop(), !running),
           newAction("Load", () => {}),
           newAction("Save", () => {}),
-          // newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
+          newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
         ]}
         sidebar={ColorChooser(color, setColor)}
       >
@@ -236,7 +236,17 @@ export default function Piet() {
           />
         </div>
       </Window>
-      <Window title="Terminal" icon="ms-dos.png">
+      <Window
+        title="Terminal"
+        icon="ms-dos.png"
+        actions={[
+          newAction(
+            `Mode: ${cliMode ? "CLI" : "In/Out"}`,
+            () => setCliMode(!cliMode),
+            running,
+          ),
+        ]}
+      >
         <textarea
           ref={ioRef}
           className="terminal"

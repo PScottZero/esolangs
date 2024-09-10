@@ -8,7 +8,7 @@ export const COLORS = [
 export const WHITE = "#ffffff";
 export const BLACK = "#000000";
 
-const CMDS_PER_MS = 512;
+const CMDS_PER_MS = 1;
 
 class Codel {
   x: number;
@@ -59,10 +59,11 @@ class ColorBlock {
         }
       }
     }
-    return [0, 0];
+    return [-1, -1];
   }
 
   getHueAndLightnessChange(nextColorBlock: ColorBlock): [number, number] {
+    if (this.isNoop() || nextColorBlock.isNoop()) return [-1, -1];
     return [
       this.getChange(this.hue, nextColorBlock.hue, COLORS[0].length),
       this.getChange(this.lightness, nextColorBlock.lightness, COLORS.length),
@@ -71,6 +72,10 @@ class ColorBlock {
 
   getChange(val1: number, val2: number, wrap: number) {
     return val1 <= val2 ? val2 - val1 : val2 + wrap - val1;
+  }
+
+  isNoop(): boolean {
+    return this.hue === -1 && this.lightness === -1;
   }
 
   str(): string {
@@ -136,7 +141,7 @@ export class PietInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  run(pixels: string[][], cliMode: boolean = false) {
+  run(pixels: string[][], cliMode: boolean = true) {
     this.pixels = pixels;
     this.width = pixels[0].length;
     this.height = pixels.length;
@@ -157,18 +162,15 @@ export class PietInterpreter extends Interpreter {
     const prevColorBlock = this.colorBlocks.get(this.currColorBlock)!;
     const [hueChange, lightChange] = this.readCmd();
 
-    if (hueChange === -1) {
-      this.running = false;
-      return;
-    }
+    if (!this.running) return;
 
     switch (hueChange) {
       case 0:
         switch (lightChange) {
           case 0:
             // TODO: noop
-            console.log("white color blocks not implemented");
-            this.running = false;
+            // console.log("white color blocks not implemented");
+            // this.running = false;
             break;
           case 1:
             this.push(prevColorBlock.value);
@@ -247,7 +249,6 @@ export class PietInterpreter extends Interpreter {
   }
 
   readCmd(): [number, number] {
-    console.log("read start");
     let clockwiseCount = 0;
     let toggleCc: boolean = true;
 
@@ -261,24 +262,20 @@ export class PietInterpreter extends Interpreter {
         const nextBlock = this.colorBlocks.get(nextBlockId)!;
         this.currColorBlock = nextBlockId;
         this.currCodel = nextCodel;
-        console.log("read end");
         return currBlock.getHueAndLightnessChange(nextBlock);
       }
 
       if (toggleCc) {
-        console.log("toggle");
         this.toggleCodelChooser();
       } else {
         clockwiseCount++;
-        console.log("rotate");
         this.rotateDirectionPtr();
       }
 
-      console.log("loop again");
       toggleCc = !toggleCc;
     }
 
-    console.log("read not found");
+    this.running = false;
     return [-1, -1];
   }
 
@@ -425,7 +422,6 @@ export class PietInterpreter extends Interpreter {
         colorBlockToCodels.get(colorBlockId)!,
       );
       this.findEdgeCodels(colorBlock, boundingCodels, codelToColorBlock);
-      console.log(colorBlock.str());
     });
   }
 
