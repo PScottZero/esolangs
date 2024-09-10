@@ -77,11 +77,10 @@ export default function Piet() {
   const [running, setRunning] = useState<boolean>(false);
   const [cliMode, setCliMode] = useState<boolean>(true);
   const [color, setColor] = useState<string>(WHITE);
-  const [gridOn, setGridOn] = useState<boolean>(false);
+  // const [gridOn, setGridOn] = useState<boolean>(false);
 
   const programRef = useRef<string[][]>(initProgram());
   const loadRef = useRef<HTMLInputElement>(null);
-  const progRef = useRef<HTMLTextAreaElement>(null);
   const ioRef = useRef<HTMLTextAreaElement>(null);
   const prevIORef = useRef<string>("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -115,19 +114,19 @@ export default function Piet() {
     const x = Math.min(Math.floor(diffX / zoom), widthRef.current - 1);
     const y = Math.min(Math.floor(diffY / zoom), heightRef.current - 1);
     programRef.current![y][x] = color;
-    drawPixel(x, y, gridOn);
+    drawPixel(x, y, false);
   };
 
   const drawCanvas = (toggleGrid: boolean = false) => {
-    let _gridOn = toggleGrid ? !gridOn : gridOn;
-    setGridOn(_gridOn);
+    // let _gridOn = toggleGrid ? !gridOn : gridOn;
+    // if (toggleGrid) setGridOn((on) => !on);
 
     canvasRef.current!.width = widthRef.current * zoomRef.current;
     canvasRef.current!.height = heightRef.current * zoomRef.current;
 
     for (let y = 0; y < heightRef.current; y++) {
       for (let x = 0; x < widthRef.current; x++) {
-        drawPixel(x, y, _gridOn);
+        drawPixel(x, y, false);
       }
     }
   };
@@ -210,7 +209,7 @@ export default function Piet() {
       removeEventListener("keyup", keyupListener);
       removeEventListener("keydown", keydownListener);
     };
-  }, [gridOn]);
+  }, []);
 
   return (
     <main className={styles.main}>
@@ -225,7 +224,7 @@ export default function Piet() {
           newAction("Stop", () => pietRef.current!.stop(), !running),
           newAction("Load", () => {}),
           newAction("Save", () => {}),
-          newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
+          // newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
         ]}
         sidebar={ColorChooser(color, setColor)}
       >
@@ -242,7 +241,7 @@ export default function Piet() {
         actions={[
           newAction(
             `Mode: ${cliMode ? "CLI" : "In/Out"}`,
-            () => setCliMode(!cliMode),
+            () => setCliMode((mode) => !mode),
             running,
           ),
         ]}

@@ -362,26 +362,51 @@ export class PietInterpreter extends Interpreter {
   }
 
   duplicate() {
-    const value = this.pop();
-    this.push(value);
-    this.push(value);
+    if (this.stack.length > 0) {
+      const value = this.pop();
+      this.push(value);
+      this.push(value);
+    }
   }
 
   roll() {
-    // TODO
-    console.log("roll not implemented");
-    this.running = false;
+    const rolls = this.pop();
+    const depth = this.pop();
+
+    if (depth < 0) {
+      console.log("roll command received negative depth");
+      return;
+    }
+
+    const rollIdx = this.stack.length - depth;
+    if (rollIdx < 0) return;
+
+    const forward = rolls >= 0;
+    const absRolls = Math.abs(rolls);
+    for (let roll = 0; roll < absRolls; roll++) {
+      if (forward) {
+        this.stack.splice(rollIdx, 0, this.pop());
+      } else {
+        this.stack.push(this.stack.splice(rollIdx, 1)[0]);
+      }
+    }
   }
 
   inNumber() {
     if (this.inputPtr < this.input.length) {
       this.push(parseInt(this.input.at(this.inputPtr++)!));
+    } else if (this.cliMode) {
+      console.log("waiting for input");
+      this.waitingForInput = true;
     }
   }
 
   inChar() {
     if (this.inputPtr < this.input.length) {
-      this.push(this.input.at(this.inputPtr++)!.charCodeAt(0));
+      const i = this.input.at(this.inputPtr++)!.charCodeAt(0);
+    } else if (this.cliMode) {
+      console.log("waiting for input");
+      this.waitingForInput = true;
     }
   }
 
