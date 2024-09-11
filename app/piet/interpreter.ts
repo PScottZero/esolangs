@@ -63,7 +63,7 @@ class ColorBlock {
   }
 
   getHueAndLightnessChange(nextColorBlock: ColorBlock): [number, number] {
-    if (this.isNoop() || nextColorBlock.isNoop()) return [-1, -1];
+    if (this.isNoop() || nextColorBlock.isNoop()) return [0, 0];
     return [
       this.getChange(this.hue, nextColorBlock.hue, COLORS[0].length),
       this.getChange(this.lightness, nextColorBlock.lightness, COLORS.length),
@@ -120,6 +120,8 @@ export class PietInterpreter extends Interpreter {
   width: number = 0;
   height: number = 0;
   colorBlocks: Map<number, ColorBlock> = new Map();
+  codelToColorBlock: Map<string, number> = new Map();
+  colorBlockToCodels: Map<number, Codels> = new Map();
   stack: number[] = [];
 
   dp: DirectionPtr = DirectionPtr.Right;
@@ -141,7 +143,9 @@ export class PietInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  run(pixels: string[][], cliMode: boolean = true) {
+  async run(pixels: string[][], cliMode: boolean = true) {
+    if (this.running) await this.stop();
+
     this.pixels = pixels;
     this.width = pixels[0].length;
     this.height = pixels.length;
@@ -168,9 +172,7 @@ export class PietInterpreter extends Interpreter {
       case 0:
         switch (lightChange) {
           case 0:
-            // TODO: noop
-            // console.log("white color blocks not implemented");
-            // this.running = false;
+            this.noopSlide();
             break;
           case 1:
             this.push(prevColorBlock.value);
@@ -246,6 +248,8 @@ export class PietInterpreter extends Interpreter {
         }
         break;
     }
+
+    if (this.waitingForInput) this.currColorBlock = prevColorBlock.id;
   }
 
   readCmd(): [number, number] {
@@ -273,6 +277,67 @@ export class PietInterpreter extends Interpreter {
       }
 
       toggleCc = !toggleCc;
+    }
+
+    this.running = false;
+    return [-1, -1];
+  }
+
+  noopSlide() {
+    const colorBlockColor = this.colorBlocks.get(this.currColorBlock)!.color;
+    let path = "";
+    let prevPath = "";
+
+    let clockwiseCount = 0;
+    let toggleCc = true;
+    let addCodelToPath = true;
+
+    while (true) {
+      if (addCodelToPath) {
+        path += this.currCodel.str() + ":";
+        addCodelToPath = false;
+      }
+
+      let nextCodel: Codel;
+      switch (this.dp) {
+        case DirectionPtr.Up:
+          nextCodel = new Codel(this.currCodel.x, this.currCodel.y - 1);
+          break;
+        case DirectionPtr.Right:
+          nextCodel = new Codel(this.currCodel.x + 1, this.currCodel.y);
+          break;
+        case DirectionPtr.Down:
+          nextCodel = new Codel(this.currCodel.x, this.currCodel.y + 1);
+          break;
+        case DirectionPtr.Left:
+          nextCodel = new Codel(this.currCodel.x - 1, this.currCodel.y);
+          break;
+      }
+
+      if (
+        nextCodel.inBounds(this.width, this.height) &&
+        this.pixelColor(nextCodel) !== BLACK
+      ) {
+        this.currCodel = nextCodel;
+        addCodelToPath = true;
+        if (this.pixelColor(nextCodel) !== colorBlockColor) {
+          this.currColorBlock = this.codelToColorBlock.get(nextCodel.str())!;
+          return;
+        }
+      } else {
+        if (toggleCc) {
+          this.toggleCodelChooser();
+        } else {
+          if (++clockwiseCount === 4) {
+            if (path === prevPath) break;
+            prevPath = path;
+            path = "";
+            clockwiseCount = 0;
+          }
+          this.rotateDirectionPtr();
+        }
+        toggleCc = !toggleCc;
+      }
     }
 
     this.running = false;
@@ -394,18 +459,17 @@ export class PietInterpreter extends Interpreter {
 
   inNumber() {
     if (this.inputPtr < this.input.length) {
-      this.push(parseInt(this.input.at(this.inputPtr++)!));
+      this.push(parseInt(this.input.trim()));
+      this.inputPtr = this.input.length;
     } else if (this.cliMode) {
-      console.log("waiting for input");
       this.waitingForInput = true;
     }
   }
 
   inChar() {
     if (this.inputPtr < this.input.length) {
-      const i = this.input.at(this.inputPtr++)!.charCodeAt(0);
+      this.push(this.input.at(this.inputPtr++)!.charCodeAt(0));
     } else if (this.cliMode) {
-      console.log("waiting for input");
       this.waitingForInput = true;
     }
   }
@@ -426,48 +490,39 @@ export class PietInterpreter extends Interpreter {
 
   initColorBlocks() {
     let blockIdx = 0;
-    const codelToColorBlock = new Map<string, number>();
-    const colorBlockToCodels = new Map<number, Codels>();
+    this.codelToColorBlock = new Map();
+    this.colorBlockToCodels = new Map();
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const codel = new Codel(x, y);
 
-        if (codelToColorBlock.has(codel.str())) continue;
+        if (this.codelToColorBlock.has(codel.str())) continue;
 
         const colorBlock = new ColorBlock(blockIdx++, this.pixels[y][x]);
-        const codels = this.findCodels(colorBlock, codel, codelToColorBlock);
-        colorBlockToCodels.set(colorBlock.id, codels);
+        const codels = this.findCodels(colorBlock, codel);
+        this.colorBlockToCodels.set(colorBlock.id, codels);
 
         this.colorBlocks.set(colorBlock.id, colorBlock);
       }
     }
 
-    this.colorBlocks.forEach((colorBlock, colorBlockId) => {
-      const boundingCodels = this.findBoundingCodels(
-        colorBlockToCodels.get(colorBlockId)!,
-      );
-      this.findEdgeCodels(colorBlock, boundingCodels, codelToColorBlock);
-    });
+    this.colorBlocks.forEach((cb, _) => this.findColorBlockEdges(cb));
   }
 
-  findCodels(
-    colorBlock: ColorBlock,
-    startCodel: Codel,
-    codelToColorBlock: Map<string, number>,
-  ): Codels {
+  findCodels(colorBlock: ColorBlock, startCodel: Codel): Codels {
     const codels = new Set<Codel>();
     const exploreQueue: Codel[] = [startCodel];
     while (exploreQueue.length > 0) {
       const codel = exploreQueue.pop()!;
 
       const inBounds = codel.inBounds(this.width, this.height);
-      const visited = codelToColorBlock.has(codel.str());
+      const visited = this.codelToColorBlock.has(codel.str());
       if (!inBounds || visited) continue;
 
       if (this.pixelColor(codel) === colorBlock.color) {
         colorBlock.value += 1;
         codels.add(codel);
-        codelToColorBlock.set(codel.str(), colorBlock.id);
+        this.codelToColorBlock.set(codel.str(), colorBlock.id);
         exploreQueue.push(new Codel(codel.x, codel.y - 1));
         exploreQueue.push(new Codel(codel.x, codel.y + 1));
         exploreQueue.push(new Codel(codel.x - 1, codel.y));
@@ -478,7 +533,9 @@ export class PietInterpreter extends Interpreter {
     return codels;
   }
 
-  findBoundingCodels(codels: Codels): BoundingCodels {
+  findBoundingCodels(colorBlockId: number): BoundingCodels {
+    const codels = this.colorBlockToCodels.get(colorBlockId)!;
+
     let minXCodel = new Codel(this.width, 0);
     let maxXCodel = new Codel(0, 0);
     let minYCodel = new Codel(0, this.height);
@@ -499,11 +556,9 @@ export class PietInterpreter extends Interpreter {
     ];
   }
 
-  findEdgeCodels(
-    colorBlock: ColorBlock,
-    boundingCodels: BoundingCodels,
-    codelToColorBlock: Map<string, number>,
-  ) {
+  findColorBlockEdges(colorBlock: ColorBlock) {
+    const boundingCodels = this.findBoundingCodels(colorBlock.id);
+
     for (const [dp, codel] of boundingCodels) {
       colorBlock.edges.set(dp, new Map());
 
@@ -558,7 +613,7 @@ export class PietInterpreter extends Interpreter {
           nextCodel.inBounds(this.width, this.height) &&
           this.pixelColor(nextCodel) !== BLACK
         ) {
-          const nextColorBlock = codelToColorBlock.get(nextCodel.str())!;
+          const nextColorBlock = this.codelToColorBlock.get(nextCodel.str())!;
           colorBlock.edges.get(dp)!.set(cc, [nextColorBlock, nextCodel]);
         }
       }

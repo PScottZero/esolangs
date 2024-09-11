@@ -1,5 +1,6 @@
 import json
 from PIL import Image
+import os
 
 valid_colors = [
     "#ffc0c0",
@@ -29,7 +30,17 @@ programs_json = json.loads(open("public/programs.json", "r").read())
 programs = programs_json["piet"]["programs"]
 
 for program in programs:
-    img = Image.open(f"{piet_path}/{program}")
+    img_path = f"{piet_path}/{program}"
+
+    if program.split(".")[-1] == "png":
+        tmp_img_path = f"{piet_path}/.{program}"
+        os.system(
+            f"tools/pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB {img_path} {tmp_img_path}"
+        )
+        os.remove(img_path)
+        os.rename(tmp_img_path, img_path)
+
+    img = Image.open(img_path)
     img = img.convert("RGB")
     valid = True
     invalid_colors = set()
