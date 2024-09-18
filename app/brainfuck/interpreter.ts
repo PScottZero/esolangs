@@ -18,18 +18,8 @@ export class BrainfuckInterpreter extends Interpreter {
   program: string = "";
   progPtr: number = 0;
 
-  constructor(
-    ioRef: React.RefObject<HTMLTextAreaElement>,
-    prevIoRef: React.MutableRefObject<string>,
-    setRunning: React.Dispatch<React.SetStateAction<boolean>>,
-  ) {
-    super(CMDS_PER_MS, ioRef, prevIoRef, setRunning);
-
-    this.data = createBytes(DATA_SIZE);
-    this.dataPtr = 0;
-
-    this.program = "";
-    this.progPtr = 0;
+  constructor(setRunning: (running: boolean) => void) {
+    super(CMDS_PER_MS, setRunning);
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

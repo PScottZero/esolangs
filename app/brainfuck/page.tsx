@@ -16,19 +16,14 @@ import { BrainfuckInterpreter } from "./interpreter";
 import styles from "./page.module.scss";
 
 export default function Brainfuck() {
-  const [running, setRunning] = useState<boolean>(false);
-  const [cliMode, setCliMode] = useState<boolean>(true);
+  const [running, setRunning] = useState(false);
+  const [cliMode, setCliMode] = useState(true);
 
-  const loadRef = useRef<HTMLInputElement>(null);
-  const progRef = useRef<HTMLTextAreaElement>(null);
-  const ioRef = useRef<HTMLTextAreaElement>(null);
-  const prevIORef = useRef<string>("");
-  const bfRef = useRef<BrainfuckInterpreter>(
-    new BrainfuckInterpreter(ioRef, prevIORef, setRunning),
-  );
+  const programRef = useRef<HTMLTextAreaElement>(null);
+  const bfRef = useRef(new BrainfuckInterpreter(setRunning));
 
-  const getProgram = (): string => progRef.current!.value;
-  const setProgram = (program: string) => (progRef.current!.value = program);
+  const getProgram = (): string => programRef.current!.value;
+  const setProgram = (program: string) => (programRef.current!.value = program);
 
   useEffect(() => {
     readTextFileFromServer(programsJson.brainfuck.default, (result) => {
@@ -46,11 +41,11 @@ export default function Brainfuck() {
         actions={[
           newAction("Run", () => bfRef.current.run(getProgram(), cliMode)),
           newAction("Stop", () => bfRef.current.stop(), !running),
-          newAction("Load", () => loadRef.current!.click()),
+          newAction("Load", () => bfRef.current.load()),
           newAction("Save", () => saveTextFile("program.b", getProgram())),
         ]}
       >
-        <textarea ref={progRef} className={styles.textArea} name="editor" />
+        <textarea ref={programRef} className={styles.textArea} name="editor" />
       </Window>
       <Programs
         programs={programsJson.brainfuck.programs}
@@ -73,15 +68,18 @@ export default function Brainfuck() {
         ]}
       >
         <textarea
-          ref={ioRef}
+          ref={(el) => bfRef.current.setIoEl(el!)}
           className="terminal"
           name="terminal"
           onChange={() => bfRef.current.setInput()}
           spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
         />
       </Window>
       <input
-        ref={loadRef}
+        ref={(el) => bfRef.current.setLoadEl(el!)}
         type="file"
         accept=".b,.bf"
         style={{ display: "none" }}

@@ -73,30 +73,37 @@ function ColorChooser(
   );
 }
 
+class CanvasRefs {
+  canvasEl: HTMLCanvasElement | null = null;
+  canvasContainerEl: HTMLDivElement | null = null;
+  width: number = DEFAULT_PROG_SIZE;
+  height: number = DEFAULT_PROG_SIZE;
+  showGrid: boolean = false;
+  zoom: number = DEFAULT_ZOOM;
+  shiftPressed: boolean = false;
+  program: string[][] = initProgram();
+
+  setCanvasEl(canvasEl: HTMLCanvasElement) {
+    this.canvasEl = canvasEl;
+  }
+
+  setCanvasContainerEl(canvasContainerEl: HTMLDivElement) {
+    this.canvasContainerEl = canvasContainerEl;
+  }
+}
+
 export default function Piet() {
   const [running, setRunning] = useState<boolean>(false);
   const [cliMode, setCliMode] = useState<boolean>(true);
   const [color, setColor] = useState<string>(WHITE);
-  // const [gridOn, setGridOn] = useState<boolean>(false);
 
-  const programRef = useRef<string[][]>(initProgram());
-  const loadRef = useRef<HTMLInputElement>(null);
-  const ioRef = useRef<HTMLTextAreaElement>(null);
-  const prevIORef = useRef<string>("");
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const shiftPressedRef = useRef<boolean>(false);
-  const widthRef = useRef<number>(DEFAULT_PROG_SIZE);
-  const heightRef = useRef<number>(DEFAULT_PROG_SIZE);
-  const zoomRef = useRef<number>(DEFAULT_ZOOM);
-  const pietRef = useRef<PietInterpreter>(
-    new PietInterpreter(ioRef, prevIORef, setRunning),
-  );
+  const canvasRefs = useRef<CanvasRefs>(new CanvasRefs());
+  const pietRef = useRef(new PietInterpreter(setRunning));
 
   const drawPixel = (x: number, y: number, drawGrid: boolean) => {
-    const zoom = zoomRef.current;
-    const ctx = canvasRef.current!.getContext("2d")!;
-    ctx.fillStyle = programRef.current![y][x];
+    const zoom = canvasRefs.current.zoom;
+    const ctx = canvasRefs.current.canvasEl!.getContext("2d")!;
+    ctx.fillStyle = canvasRefs.current.program[y][x];
     ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
     if (drawGrid) {
       ctx.strokeStyle = "#7f7f7f";
@@ -106,14 +113,14 @@ export default function Piet() {
   };
 
   const setPixel = (mouseX: number, mouseY: number) => {
-    const zoom = zoomRef.current;
-    const canvas = canvasRef.current!;
-    const canvasContainer = canvasContainerRef.current!;
+    const zoom = canvasRefs.current.zoom;
+    const canvas = canvasRefs.current.canvasEl!;
+    const canvasContainer = canvasRefs.current.canvasContainerEl!;
     const diffX = mouseX - canvas.offsetLeft + canvasContainer.scrollLeft;
     const diffY = mouseY - canvas.offsetTop + canvasContainer.scrollTop;
-    const x = Math.min(Math.floor(diffX / zoom), widthRef.current - 1);
-    const y = Math.min(Math.floor(diffY / zoom), heightRef.current - 1);
-    programRef.current![y][x] = color;
+    const x = Math.min(Math.floor(diffX / zoom), canvasRefs.current.width - 1);
+    const y = Math.min(Math.floor(diffY / zoom), canvasRefs.current.height - 1);
+    canvasRefs.current.program[y][x] = color;
     drawPixel(x, y, false);
   };
 
@@ -121,11 +128,13 @@ export default function Piet() {
     // let _gridOn = toggleGrid ? !gridOn : gridOn;
     // if (toggleGrid) setGridOn((on) => !on);
 
-    canvasRef.current!.width = widthRef.current * zoomRef.current;
-    canvasRef.current!.height = heightRef.current * zoomRef.current;
+    canvasRefs.current.canvasEl!.width =
+      canvasRefs.current.width * canvasRefs.current.zoom;
+    canvasRefs.current.canvasEl!.height =
+      canvasRefs.current.height * canvasRefs.current.zoom;
 
-    for (let y = 0; y < heightRef.current; y++) {
-      for (let x = 0; x < widthRef.current; x++) {
+    for (let y = 0; y < canvasRefs.current.height; y++) {
+      for (let x = 0; x < canvasRefs.current.width; x++) {
         drawPixel(x, y, false);
       }
     }
@@ -133,21 +142,21 @@ export default function Piet() {
 
   const loadImage = async (image: string) => {
     await readImageFromServer(image, (data) => {
-      programRef.current! = initProgram(data.width, data.height);
+      canvasRefs.current.program = initProgram(data.width, data.height);
       for (let y = 0; y < data.height; y++) {
         for (let x = 0; x < data.width; x++) {
           const px = 4 * (y * data.width + x);
           const r = data.data[px].toString(16).padStart(2, "0");
           const g = data.data[px + 1].toString(16).padStart(2, "0");
           const b = data.data[px + 2].toString(16).padStart(2, "0");
-          programRef.current![y][x] = `#${r}${g}${b}`;
+          canvasRefs.current.program[y][x] = `#${r}${g}${b}`;
         }
       }
 
       const containerWidth =
-        canvasContainerRef.current!.clientWidth - CANVAS_PADDING;
+        canvasRefs.current.canvasContainerEl!.clientWidth - CANVAS_PADDING;
       const containerHeight =
-        canvasContainerRef.current!.clientHeight - CANVAS_PADDING;
+        canvasRefs.current.canvasContainerEl!.clientHeight - CANVAS_PADDING;
 
       let zoom = MIN_ZOOM;
       while (zoom < MAX_ZOOM) {
@@ -158,41 +167,41 @@ export default function Piet() {
           break;
         }
       }
-      zoomRef.current = zoom;
-      widthRef.current = data.width;
-      heightRef.current = data.height;
+      canvasRefs.current.zoom = zoom;
+      canvasRefs.current.width = data.width;
+      canvasRefs.current.height = data.height;
 
       drawCanvas();
     });
   };
 
   const wheelListener = (e: WheelEvent) => {
-    if (shiftPressedRef.current) {
-      const oldZoom = zoomRef.current;
+    if (canvasRefs.current.shiftPressed) {
+      const oldZoom = canvasRefs.current.zoom;
       const dir = e.deltaY <= 0 ? 1 : -1;
-      zoomRef.current = Math.max(
+      canvasRefs.current.zoom = Math.max(
         MIN_ZOOM,
-        Math.min(MAX_ZOOM, zoomRef.current + dir),
+        Math.min(MAX_ZOOM, canvasRefs.current.zoom + dir),
       );
 
-      const newWidth = widthRef.current * zoomRef.current;
-      const newHeight = heightRef.current * zoomRef.current;
+      const newWidth = canvasRefs.current.width * canvasRefs.current.zoom;
+      const newHeight = canvasRefs.current.height * canvasRefs.current.zoom;
       const pixelCount = newWidth * newHeight;
 
       if (pixelCount <= MAX_CANVAS_PXS) {
         drawCanvas();
       } else {
-        zoomRef.current = oldZoom;
+        canvasRefs.current.zoom = oldZoom;
       }
     }
   };
 
   const keyupListener = (e: KeyboardEvent) => {
-    if (e.key === "Shift") shiftPressedRef.current = false;
+    if (e.key === "Shift") canvasRefs.current.shiftPressed = false;
   };
 
   const keydownListener = (e: KeyboardEvent) => {
-    if (e.key === "Shift") shiftPressedRef.current = true;
+    if (e.key === "Shift") canvasRefs.current.shiftPressed = true;
   };
 
   const init = async () => {
@@ -219,18 +228,21 @@ export default function Piet() {
         gridArea="editor"
         actions={[
           newAction("Run", () =>
-            pietRef.current!.run(programRef.current, cliMode),
+            pietRef.current!.run(canvasRefs.current.program, cliMode),
           ),
-          newAction("Stop", () => pietRef.current!.stop(), !running),
+          newAction("Stop", () => pietRef.current.stop(), !running),
           newAction("Load", () => {}),
           newAction("Save", () => {}),
           // newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
         ]}
         sidebar={ColorChooser(color, setColor)}
       >
-        <div ref={canvasContainerRef} className={styles.canvasContainer}>
+        <div
+          ref={(el) => canvasRefs.current.setCanvasContainerEl(el!)}
+          className={styles.canvasContainer}
+        >
           <canvas
-            ref={canvasRef}
+            ref={(el) => canvasRefs.current.setCanvasEl(el!)}
             onClick={(e) => setPixel(e.clientX, e.clientY)}
           />
         </div>
@@ -247,7 +259,9 @@ export default function Piet() {
         ]}
       >
         <textarea
-          ref={ioRef}
+          ref={(el) => {
+            pietRef.current.ioEl = el;
+          }}
           className="terminal"
           name="terminal"
           onChange={() => pietRef.current.setInput()}
