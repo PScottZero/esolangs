@@ -11,22 +11,14 @@ export const BLACK = "#000000";
 const CMDS_PER_MS = 1;
 
 class Codel {
+  id: string;
   x: number;
   y: number;
 
   constructor(x: number, y: number) {
+    this.id = `${x},${y}`;
     this.x = x;
     this.y = y;
-  }
-
-  str(): string {
-    return `${this.x},${this.y}`;
-  }
-
-  inBounds(maxX: number, maxY: number): boolean {
-    const xInBounds = this.x >= 0 && this.x < maxX;
-    const yInBounds = this.y >= 0 && this.y < maxY;
-    return xInBounds && yInBounds;
   }
 }
 
@@ -290,7 +282,7 @@ export class PietInterpreter extends Interpreter {
 
     while (true) {
       if (addCodelToPath) {
-        path += this.currCodel.str() + ":";
+        path += this.currCodel.id + ":";
         addCodelToPath = false;
       }
 
@@ -303,13 +295,13 @@ export class PietInterpreter extends Interpreter {
       );
 
       if (
-        nextCodel.inBounds(this.width, this.height) &&
+        this.codelInBounds(nextCodel) &&
         this.pixelColor(nextCodel) !== BLACK
       ) {
         this.currCodel = nextCodel;
         addCodelToPath = true;
         if (this.pixelColor(nextCodel) !== colorBlockColor) {
-          this.currColorBlock = this.codelToColorBlock.get(nextCodel.str())!;
+          this.currColorBlock = this.codelToColorBlock.get(nextCodel.id)!;
           return;
         }
       } else {
@@ -367,33 +359,28 @@ export class PietInterpreter extends Interpreter {
   }
 
   add() {
-    const b = this.pop();
-    const a = this.pop();
+    const [b, a] = [this.pop(), this.pop()];
     this.stack.push(a + b);
   }
 
   subtract() {
-    const b = this.pop();
-    const a = this.pop();
+    const [b, a] = [this.pop(), this.pop()];
     this.stack.push(a - b);
   }
 
   multiply() {
-    const b = this.pop();
-    const a = this.pop();
+    const [b, a] = [this.pop(), this.pop()];
     this.stack.push(a * b);
   }
 
   divide() {
-    const b = this.pop();
-    const a = this.pop();
-    if (b !== 0) this.stack.push(a / b);
+    const [b, a] = [this.pop(), this.pop()];
+    if (b !== 0) this.stack.push(Math.floor(a / b));
   }
 
   mod() {
-    const b = this.pop();
-    const a = this.pop();
-    this.stack.push(a < 0 ? ((a % b) + b) % b : a % b);
+    const [b, a] = [this.pop(), this.pop()];
+    if (b !== 0) this.stack.push(((a % b) + b) % b);
   }
 
   not() {
@@ -401,8 +388,7 @@ export class PietInterpreter extends Interpreter {
   }
 
   greater() {
-    const b = this.pop();
-    const a = this.pop();
+    const [b, a] = [this.pop(), this.pop()];
     this.stack.push(a > b ? 1 : 0);
   }
 
@@ -484,7 +470,7 @@ export class PietInterpreter extends Interpreter {
       for (let x = 0; x < this.width; x++) {
         const codel = new Codel(x, y);
 
-        if (this.codelToColorBlock.has(codel.str())) continue;
+        if (this.codelToColorBlock.has(codel.id)) continue;
 
         const colorBlock = new ColorBlock(blockIdx++, this.pixels[y][x]);
         const codels = this.findCodels(colorBlock, codel);
@@ -503,14 +489,14 @@ export class PietInterpreter extends Interpreter {
     while (exploreQueue.length > 0) {
       const codel = exploreQueue.pop()!;
 
-      const inBounds = codel.inBounds(this.width, this.height);
-      const visited = this.codelToColorBlock.has(codel.str());
+      const inBounds = this.codelInBounds(codel);
+      const visited = this.codelToColorBlock.has(codel.id);
       if (!inBounds || visited) continue;
 
       if (this.pixelColor(codel) === colorBlock.color) {
         colorBlock.value += 1;
         codels.add(codel);
-        this.codelToColorBlock.set(codel.str(), colorBlock.id);
+        this.codelToColorBlock.set(codel.id, colorBlock.id);
         exploreQueue.push(new Codel(codel.x, codel.y - 1));
         exploreQueue.push(new Codel(codel.x, codel.y + 1));
         exploreQueue.push(new Codel(codel.x - 1, codel.y));
@@ -528,22 +514,20 @@ export class PietInterpreter extends Interpreter {
       colorBlock.edges.set(dp, new Map());
 
       for (const cc of [CodelChooser.Left, CodelChooser.Right]) {
-        let found = false;
         let currCodel = codel;
-        let nextCodel: Codel;
 
-        while (!found) {
-          const dir = cc === CodelChooser.Right ? 1 : -1;
-          nextCodel = this.getNextCodel(
+        while (true) {
+          const step = cc === CodelChooser.Right ? 1 : -1;
+          const nextCodel = this.getNextCodel(
             dp,
-            () => new Codel(currCodel.x + dir, currCodel.y),
-            () => new Codel(currCodel.x, currCodel.y + dir),
-            () => new Codel(currCodel.x - dir, currCodel.y),
-            () => new Codel(currCodel.x, currCodel.y - dir),
+            () => new Codel(currCodel.x + step, currCodel.y),
+            () => new Codel(currCodel.x, currCodel.y + step),
+            () => new Codel(currCodel.x - step, currCodel.y),
+            () => new Codel(currCodel.x, currCodel.y - step),
           );
 
           if (
-            nextCodel.inBounds(this.width, this.height) &&
+            this.codelInBounds(nextCodel) &&
             this.pixelColor(nextCodel) === colorBlock.color
           ) {
             currCodel = nextCodel;
@@ -552,7 +536,7 @@ export class PietInterpreter extends Interpreter {
           }
         }
 
-        nextCodel = this.getNextCodel(
+        const nextCodel = this.getNextCodel(
           dp,
           () => new Codel(currCodel.x, currCodel.y - 1),
           () => new Codel(currCodel.x + 1, currCodel.y),
@@ -561,10 +545,10 @@ export class PietInterpreter extends Interpreter {
         );
 
         if (
-          nextCodel.inBounds(this.width, this.height) &&
+          this.codelInBounds(nextCodel) &&
           this.pixelColor(nextCodel) !== BLACK
         ) {
-          const nextColorBlock = this.codelToColorBlock.get(nextCodel.str())!;
+          const nextColorBlock = this.codelToColorBlock.get(nextCodel.id)!;
           colorBlock.edges.get(dp)!.set(cc, [nextColorBlock, nextCodel]);
         }
       }
@@ -611,6 +595,12 @@ export class PietInterpreter extends Interpreter {
       case DirectionPtr.Left:
         return leftCodel();
     }
+  }
+
+  codelInBounds(codel: Codel): boolean {
+    const xInBounds = codel.x >= 0 && codel.x < this.width;
+    const yInBounds = codel.y >= 0 && codel.y < this.height;
+    return xInBounds && yInBounds;
   }
 
   pixelColor(codel: Codel): string {

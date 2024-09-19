@@ -100,12 +100,12 @@ export default function Piet() {
   const canvasRefs = useRef<CanvasRefs>(new CanvasRefs());
   const pietRef = useRef(new PietInterpreter(setRunning));
 
-  const drawPixel = (x: number, y: number, drawGrid: boolean) => {
+  const drawPixel = (x: number, y: number) => {
     const zoom = canvasRefs.current.zoom;
     const ctx = canvasRefs.current.canvasEl!.getContext("2d")!;
     ctx.fillStyle = canvasRefs.current.program[y][x];
     ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
-    if (drawGrid) {
+    if (canvasRefs.current.showGrid) {
       ctx.strokeStyle = "#7f7f7f";
       ctx.lineWidth = 0.5;
       ctx.strokeRect(x * zoom, y * zoom, zoom, zoom);
@@ -121,12 +121,13 @@ export default function Piet() {
     const x = Math.min(Math.floor(diffX / zoom), canvasRefs.current.width - 1);
     const y = Math.min(Math.floor(diffY / zoom), canvasRefs.current.height - 1);
     canvasRefs.current.program[y][x] = color;
-    drawPixel(x, y, false);
+    drawPixel(x, y);
   };
 
   const drawCanvas = (toggleGrid: boolean = false) => {
-    // let _gridOn = toggleGrid ? !gridOn : gridOn;
-    // if (toggleGrid) setGridOn((on) => !on);
+    if (toggleGrid) {
+      canvasRefs.current.showGrid = !canvasRefs.current.showGrid;
+    }
 
     canvasRefs.current.canvasEl!.width =
       canvasRefs.current.width * canvasRefs.current.zoom;
@@ -135,7 +136,7 @@ export default function Piet() {
 
     for (let y = 0; y < canvasRefs.current.height; y++) {
       for (let x = 0; x < canvasRefs.current.width; x++) {
-        drawPixel(x, y, false);
+        drawPixel(x, y);
       }
     }
   };
@@ -233,7 +234,7 @@ export default function Piet() {
           newAction("Stop", () => pietRef.current.stop(), !running),
           newAction("Load", () => {}),
           newAction("Save", () => {}),
-          // newAction(`Grid: ${gridOn ? "On" : "Off"}`, () => drawCanvas(true)),
+          newAction("Toggle Grid", () => drawCanvas(true)),
         ]}
         sidebar={ColorChooser(color, setColor)}
       >
