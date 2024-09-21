@@ -36,7 +36,7 @@
   },
   "piet": {
     "path": "/esolangs/bin/piet",
-    "default": "/esolangs/bin/piet/Piet-1.gif",
+    "default": "/esolangs/bin/piet/hw1-1.gif",
     "programs": [
       "99bottles.png",
       "adder.png",

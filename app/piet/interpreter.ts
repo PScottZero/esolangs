@@ -14,18 +14,17 @@ class Codel {
   id: string;
   x: number;
   y: number;
+  color: string;
 
   constructor(x: number, y: number) {
     this.id = `${x},${y}`;
     this.x = x;
     this.y = y;
+    this.color = "";
   }
 }
 
-type Edge = Map<CodelChooser, [number, Codel]>;
-type Edges = Map<DirectionPtr, Edge>;
-type Codels = Set<Codel>;
-type BoundingCodels = [DirectionPtr, Codel][];
+type Edge = Map<CodelChooser, [ColorBlock, Codel]>;
 
 class ColorBlock {
   id: number;
@@ -33,14 +32,18 @@ class ColorBlock {
   hue: number;
   lightness: number;
   value: number;
-  edges: Edges;
+
+  edges: Map<DirectionPtr, Edge>;
+  codels: Set<Codel>;
 
   constructor(id: number, color: string) {
     this.id = id;
     this.color = color;
     [this.hue, this.lightness] = this.getHueAndLightness();
     this.value = 0;
+
     this.edges = new Map();
+    this.codels = new Set();
   }
 
   getHueAndLightness(): [number, number] {
@@ -83,10 +86,10 @@ class ColorBlock {
 }
 
 export enum DirectionPtr {
-  Up,
-  Right,
-  Down,
-  Left,
+  Up = "up",
+  Right = "right",
+  Down = "down",
+  Left = "left",
 }
 
 const DIRECTIONS = [
@@ -97,8 +100,8 @@ const DIRECTIONS = [
 ];
 
 export enum CodelChooser {
-  Left,
-  Right,
+  Left = "left",
+  Right = "right",
 }
 
 export class PietInterpreter extends Interpreter {
@@ -111,15 +114,16 @@ export class PietInterpreter extends Interpreter {
   pixels: string[][] = [];
   width: number = 0;
   height: number = 0;
-  colorBlocks: Map<number, ColorBlock> = new Map();
-  codelToColorBlock: Map<string, number> = new Map();
-  colorBlockToCodels: Map<number, Codels> = new Map();
-  stack: number[] = [];
+
+  colorBlocks: ColorBlock[] = [];
+  codelToColorBlock: Map<string, ColorBlock> = new Map();
 
   dp: DirectionPtr = DirectionPtr.Right;
   cc: CodelChooser = CodelChooser.Left;
-  currColorBlock: number = 0;
+  currColorBlock: ColorBlock = new ColorBlock(0, "");
   currCodel: Codel = new Codel(0, 0);
+
+  stack: number[] = [];
 
   constructor(setRunning: (running: boolean) => void) {
     super(CMDS_PER_MS, setRunning);
@@ -137,13 +141,16 @@ export class PietInterpreter extends Interpreter {
     this.pixels = pixels;
     this.width = pixels[0].length;
     this.height = pixels.length;
-    this.colorBlocks = new Map();
-    this.stack = [];
+
+    this.colorBlocks = [];
+    this.codelToColorBlock = new Map();
 
     this.dp = DirectionPtr.Right;
     this.cc = CodelChooser.Left;
-    this.currColorBlock = 0;
+    this.currColorBlock = new ColorBlock(0, "");
     this.currCodel = new Codel(0, 0);
+
+    this.stack = [];
 
     this.reset(cliMode);
     this.initColorBlocks();
@@ -151,7 +158,7 @@ export class PietInterpreter extends Interpreter {
   }
 
   step() {
-    const prevColorBlock = this.colorBlocks.get(this.currColorBlock)!;
+    const prevColorBlock = this.currColorBlock;
     const [hueChange, lightChange] = this.readCmd();
 
     if (!this.running) return;
@@ -237,7 +244,7 @@ export class PietInterpreter extends Interpreter {
         break;
     }
 
-    if (this.waitingForInput) this.currColorBlock = prevColorBlock.id;
+    if (this.waitingForInput) this.currColorBlock = prevColorBlock;
   }
 
   readCmd(): [number, number] {
@@ -245,14 +252,13 @@ export class PietInterpreter extends Interpreter {
     let toggleCc: boolean = true;
 
     while (clockwiseCount < 4) {
-      const currBlock = this.colorBlocks.get(this.currColorBlock)!;
-      const [nextBlockId, nextCodel] = currBlock?.edges
+      const currBlock = this.currColorBlock;
+      const [nextBlock, nextCodel] = currBlock?.edges
         .get(this.dp)!
         .get(this.cc) ?? [undefined, undefined];
 
-      if (nextBlockId !== undefined) {
-        const nextBlock = this.colorBlocks.get(nextBlockId)!;
-        this.currColorBlock = nextBlockId;
+      if (nextBlock !== undefined) {
+        this.currColorBlock = nextBlock;
         this.currCodel = nextCodel;
         return currBlock.getHueAndLightnessChange(nextBlock);
       }
@@ -272,7 +278,6 @@ export class PietInterpreter extends Interpreter {
   }
 
   noopSlide() {
-    const colorBlockColor = this.colorBlocks.get(this.currColorBlock)!.color;
     let path = "";
     let prevPath = "";
 
@@ -286,13 +291,7 @@ export class PietInterpreter extends Interpreter {
         addCodelToPath = false;
       }
 
-      const nextCodel = this.getNextCodel(
-        this.dp,
-        () => new Codel(this.currCodel.x, this.currCodel.y - 1),
-        () => new Codel(this.currCodel.x + 1, this.currCodel.y),
-        () => new Codel(this.currCodel.x, this.currCodel.y + 1),
-        () => new Codel(this.currCodel.x - 1, this.currCodel.y),
-      );
+      const nextCodel = this.getNextCodel(this.currCodel, this.dp);
 
       if (
         this.codelInBounds(nextCodel) &&
@@ -300,7 +299,7 @@ export class PietInterpreter extends Interpreter {
       ) {
         this.currCodel = nextCodel;
         addCodelToPath = true;
-        if (this.pixelColor(nextCodel) !== colorBlockColor) {
+        if (this.pixelColor(nextCodel) !== this.currColorBlock.color) {
           this.currColorBlock = this.codelToColorBlock.get(nextCodel.id)!;
           return;
         }
@@ -464,136 +463,129 @@ export class PietInterpreter extends Interpreter {
 
   initColorBlocks() {
     let blockIdx = 0;
-    this.codelToColorBlock = new Map();
-    this.colorBlockToCodels = new Map();
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const codel = new Codel(x, y);
-
         if (this.codelToColorBlock.has(codel.id)) continue;
 
         const colorBlock = new ColorBlock(blockIdx++, this.pixels[y][x]);
-        const codels = this.findCodels(colorBlock, codel);
-        this.colorBlockToCodels.set(colorBlock.id, codels);
-
-        this.colorBlocks.set(colorBlock.id, colorBlock);
+        this.findCodels(colorBlock, codel);
+        this.colorBlocks.push(colorBlock);
       }
     }
-
-    this.colorBlocks.forEach((cb, _) => this.findColorBlockEdges(cb));
+    this.colorBlocks.forEach((cb) => this.findColorBlockEdges(cb));
+    this.currColorBlock = this.colorBlocks[0];
   }
 
-  findCodels(colorBlock: ColorBlock, startCodel: Codel): Codels {
-    const codels = new Set<Codel>();
+  findCodels(colorBlock: ColorBlock, startCodel: Codel) {
     const exploreQueue: Codel[] = [startCodel];
     while (exploreQueue.length > 0) {
       const codel = exploreQueue.pop()!;
-
-      const inBounds = this.codelInBounds(codel);
-      const visited = this.codelToColorBlock.has(codel.id);
-      if (!inBounds || visited) continue;
-
-      if (this.pixelColor(codel) === colorBlock.color) {
-        colorBlock.value += 1;
-        codels.add(codel);
-        this.codelToColorBlock.set(codel.id, colorBlock.id);
-        exploreQueue.push(new Codel(codel.x, codel.y - 1));
-        exploreQueue.push(new Codel(codel.x, codel.y + 1));
-        exploreQueue.push(new Codel(codel.x - 1, codel.y));
-        exploreQueue.push(new Codel(codel.x + 1, codel.y));
+      if (
+        !this.codelInBounds(codel) ||
+        this.codelToColorBlock.has(codel.id) ||
+        this.pixelColor(codel) !== colorBlock.color
+      ) {
+        continue;
       }
-    }
 
-    return codels;
+      colorBlock.value += 1;
+      colorBlock.codels.add(codel);
+      this.codelToColorBlock.set(codel.id, colorBlock);
+
+      exploreQueue.push(
+        this.getNextCodel(codel, DirectionPtr.Up),
+        this.getNextCodel(codel, DirectionPtr.Right),
+        this.getNextCodel(codel, DirectionPtr.Down),
+        this.getNextCodel(codel, DirectionPtr.Left),
+      );
+    }
   }
 
   findColorBlockEdges(colorBlock: ColorBlock) {
-    const boundingCodels = this.findBoundingCodels(colorBlock.id);
-
-    for (const [dp, codel] of boundingCodels) {
-      colorBlock.edges.set(dp, new Map());
-
-      for (const cc of [CodelChooser.Left, CodelChooser.Right]) {
-        let currCodel = codel;
-
-        while (true) {
-          const step = cc === CodelChooser.Right ? 1 : -1;
-          const nextCodel = this.getNextCodel(
-            dp,
-            () => new Codel(currCodel.x + step, currCodel.y),
-            () => new Codel(currCodel.x, currCodel.y + step),
-            () => new Codel(currCodel.x - step, currCodel.y),
-            () => new Codel(currCodel.x, currCodel.y - step),
-          );
-
-          if (
-            this.codelInBounds(nextCodel) &&
-            this.pixelColor(nextCodel) === colorBlock.color
-          ) {
-            currCodel = nextCodel;
-          } else {
-            break;
-          }
-        }
-
-        const nextCodel = this.getNextCodel(
-          dp,
-          () => new Codel(currCodel.x, currCodel.y - 1),
-          () => new Codel(currCodel.x + 1, currCodel.y),
-          () => new Codel(currCodel.x, currCodel.y + 1),
-          () => new Codel(currCodel.x - 1, currCodel.y),
-        );
-
-        if (
-          this.codelInBounds(nextCodel) &&
-          this.pixelColor(nextCodel) !== BLACK
-        ) {
-          const nextColorBlock = this.codelToColorBlock.get(nextCodel.id)!;
-          colorBlock.edges.get(dp)!.set(cc, [nextColorBlock, nextCodel]);
-        }
-      }
-    }
+    const [up, right, down, left] = this.getColorBlockBounds(colorBlock.codels);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Up, up);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Right, right);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Down, down);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Left, left);
   }
 
-  findBoundingCodels(colorBlockId: number): BoundingCodels {
-    const codels = this.colorBlockToCodels.get(colorBlockId)!;
-
-    let minXCodel = new Codel(this.width, 0);
-    let maxXCodel = new Codel(0, 0);
-    let minYCodel = new Codel(0, this.height);
-    let maxYCodel = new Codel(0, 0);
+  getColorBlockBounds(codels: Set<Codel>): number[] {
+    let up = this.height;
+    let right = 0;
+    let down = 0;
+    let left = this.width;
 
     for (const codel of Array.from(codels)) {
-      if (codel.x <= minXCodel.x) minXCodel = codel;
-      if (codel.x >= maxXCodel.x) maxXCodel = codel;
-      if (codel.y <= minYCodel.y) minYCodel = codel;
-      if (codel.y >= maxYCodel.y) maxYCodel = codel;
+      if (codel.y <= up) up = codel.y;
+      if (codel.x >= right) right = codel.x;
+      if (codel.y >= down) down = codel.y;
+      if (codel.x <= left) left = codel.x;
     }
 
-    return [
-      [DirectionPtr.Up, minYCodel],
-      [DirectionPtr.Right, maxXCodel],
-      [DirectionPtr.Down, maxYCodel],
-      [DirectionPtr.Left, minXCodel],
-    ];
+    return [up, right, down, left];
   }
 
-  getNextCodel(
-    dp: DirectionPtr,
-    upCodel: () => Codel,
-    rightCodel: () => Codel,
-    downCodel: () => Codel,
-    leftCodel: () => Codel,
-  ): Codel {
+  findBoundingEdgeCodels(
+    colorBlock: ColorBlock,
+    edge: DirectionPtr,
+    edgeBound: number,
+  ) {
+    const edgeCodels: Codel[] = [];
+    const xAxis = edge === DirectionPtr.Left || edge === DirectionPtr.Right;
+    for (const codel of Array.from(colorBlock.codels)) {
+      if (this.getCodelVal(codel, xAxis) === edgeBound) edgeCodels.push(codel);
+    }
+
+    let minCodel = new Codel(-1, -1);
+    let maxCodel = new Codel(-1, -1);
+    for (const codel of edgeCodels) {
+      const val = this.getCodelVal(codel, !xAxis);
+      const minVal = this.getCodelVal(minCodel, !xAxis);
+      const maxVal = this.getCodelVal(maxCodel, !xAxis);
+      if (minVal < 0 || val <= minVal) minCodel = codel;
+      if (maxVal < 0 || val >= maxVal) maxCodel = codel;
+    }
+    const nextMinCodel = this.getNextCodel(minCodel, edge);
+    const nextMaxCodel = this.getNextCodel(maxCodel, edge);
+
+    const flipMinMax = edge === DirectionPtr.Down || edge === DirectionPtr.Left;
+    const leftCodel = flipMinMax ? nextMaxCodel : nextMinCodel;
+    const rightCodel = flipMinMax ? nextMinCodel : nextMaxCodel;
+
+    const edgeCCMap: Edge = new Map();
+    if (this.codelInBounds(leftCodel) && this.pixelColor(leftCodel) !== BLACK) {
+      edgeCCMap.set(CodelChooser.Left, [
+        this.codelToColorBlock.get(leftCodel.id)!,
+        leftCodel,
+      ]);
+    }
+    if (
+      this.codelInBounds(rightCodel) &&
+      this.pixelColor(rightCodel) !== BLACK
+    ) {
+      edgeCCMap.set(CodelChooser.Right, [
+        this.codelToColorBlock.get(rightCodel.id)!,
+        rightCodel,
+      ]);
+    }
+    colorBlock.edges.set(edge, edgeCCMap);
+  }
+
+  getCodelVal(codel: Codel, xAxis: boolean = true) {
+    return xAxis ? codel.x : codel.y;
+  }
+
+  getNextCodel(codel: Codel, dp: DirectionPtr): Codel {
     switch (dp) {
       case DirectionPtr.Up:
-        return upCodel();
+        return new Codel(codel.x, codel.y - 1);
       case DirectionPtr.Right:
-        return rightCodel();
+        return new Codel(codel.x + 1, codel.y);
       case DirectionPtr.Down:
-        return downCodel();
+        return new Codel(codel.x, codel.y + 1);
       case DirectionPtr.Left:
-        return leftCodel();
+        return new Codel(codel.x - 1, codel.y);
     }
   }
 

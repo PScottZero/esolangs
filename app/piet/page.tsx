@@ -141,7 +141,7 @@ export default function Piet() {
     }
   };
 
-  const loadImage = async (image: string) => {
+  const loadImage = async (image: string, run: boolean = false) => {
     await readImageFromServer(image, (data) => {
       canvasRefs.current.program = initProgram(data.width, data.height);
       for (let y = 0; y < data.height; y++) {
@@ -173,6 +173,8 @@ export default function Piet() {
       canvasRefs.current.height = data.height;
 
       drawCanvas();
+
+      if (run) pietRef.current.run(canvasRefs.current.program, cliMode);
     });
   };
 
@@ -205,12 +207,8 @@ export default function Piet() {
     if (e.key === "Shift") canvasRefs.current.shiftPressed = true;
   };
 
-  const init = async () => {
-    await loadImage(programsJson.piet.default);
-  };
-
   useEffect(() => {
-    init();
+    loadImage(programsJson.piet.default, true);
     addEventListener("wheel", wheelListener);
     addEventListener("keyup", keyupListener);
     addEventListener("keydown", keydownListener);
@@ -229,7 +227,7 @@ export default function Piet() {
         gridArea="editor"
         actions={[
           newAction("Run", () =>
-            pietRef.current!.run(canvasRefs.current.program, cliMode),
+            pietRef.current.run(canvasRefs.current.program, cliMode),
           ),
           newAction("Stop", () => pietRef.current.stop(), !running),
           newAction("Load", () => {}),
