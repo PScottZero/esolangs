@@ -14,13 +14,23 @@ class Codel {
   id: string;
   x: number;
   y: number;
-  color: string;
 
   constructor(x: number, y: number) {
     this.id = `${x},${y}`;
     this.x = x;
     this.y = y;
-    this.color = "";
+  }
+
+  getMainAxisCoord(edge: DirectionPtr) {
+    return edge === DirectionPtr.Left || edge === DirectionPtr.Right
+      ? this.x
+      : this.y;
+  }
+
+  getCrossAxisCoord(edge: DirectionPtr) {
+    return edge === DirectionPtr.Left || edge === DirectionPtr.Right
+      ? this.y
+      : this.x;
   }
 }
 
@@ -72,17 +82,6 @@ class ColorBlock {
   isNoop(): boolean {
     return this.hue === -1 && this.lightness === -1;
   }
-
-  str(): string {
-    let colorBlockStr = `${this.id} ${this.color} ${this.value}\n`;
-    this.edges.forEach((edge, dp) => {
-      colorBlockStr += `${dp} edge:\n`;
-      edge.forEach(([nextBlock, nextCodel], cc) => {
-        colorBlockStr += `- ${cc} ${nextBlock} (${nextCodel.x}, ${nextCodel.y})\n`;
-      });
-    });
-    return colorBlockStr + "\n";
-  }
 }
 
 export enum DirectionPtr {
@@ -110,7 +109,6 @@ export class PietInterpreter extends Interpreter {
   // Class Vars + Constructor
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
   pixels: string[][] = [];
   width: number = 0;
   height: number = 0;
@@ -153,7 +151,7 @@ export class PietInterpreter extends Interpreter {
     this.stack = [];
 
     this.reset(cliMode);
-    this.initColorBlocks();
+    this.initProgram();
     this._run();
   }
 
@@ -293,13 +291,10 @@ export class PietInterpreter extends Interpreter {
 
       const nextCodel = this.getNextCodel(this.currCodel, this.dp);
 
-      if (
-        this.codelInBounds(nextCodel) &&
-        this.pixelColor(nextCodel) !== BLACK
-      ) {
+      if (this.codelInBounds(nextCodel)) {
         this.currCodel = nextCodel;
         addCodelToPath = true;
-        if (this.pixelColor(nextCodel) !== this.currColorBlock.color) {
+        if (this.codelColor(nextCodel) !== this.currColorBlock.color) {
           this.currColorBlock = this.codelToColorBlock.get(nextCodel.id)!;
           return;
         }
@@ -457,11 +452,11 @@ export class PietInterpreter extends Interpreter {
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // Color Block Initialization
+  // Program Initialization
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  initColorBlocks() {
+  initProgram() {
     let blockIdx = 0;
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
@@ -482,9 +477,9 @@ export class PietInterpreter extends Interpreter {
     while (exploreQueue.length > 0) {
       const codel = exploreQueue.pop()!;
       if (
-        !this.codelInBounds(codel) ||
+        !this.codelInBounds(codel, true) ||
         this.codelToColorBlock.has(codel.id) ||
-        this.pixelColor(codel) !== colorBlock.color
+        this.codelColor(codel) !== colorBlock.color
       ) {
         continue;
       }
@@ -503,27 +498,22 @@ export class PietInterpreter extends Interpreter {
   }
 
   findColorBlockEdges(colorBlock: ColorBlock) {
-    const [up, right, down, left] = this.getColorBlockBounds(colorBlock.codels);
-    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Up, up);
-    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Right, right);
-    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Down, down);
-    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Left, left);
-  }
-
-  getColorBlockBounds(codels: Set<Codel>): number[] {
     let up = this.height;
     let right = 0;
     let down = 0;
     let left = this.width;
 
-    for (const codel of Array.from(codels)) {
+    for (const codel of Array.from(colorBlock.codels)) {
       if (codel.y <= up) up = codel.y;
       if (codel.x >= right) right = codel.x;
       if (codel.y >= down) down = codel.y;
       if (codel.x <= left) left = codel.x;
     }
 
-    return [up, right, down, left];
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Up, up);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Right, right);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Down, down);
+    this.findBoundingEdgeCodels(colorBlock, DirectionPtr.Left, left);
   }
 
   findBoundingEdgeCodels(
@@ -532,17 +522,16 @@ export class PietInterpreter extends Interpreter {
     edgeBound: number,
   ) {
     const edgeCodels: Codel[] = [];
-    const xAxis = edge === DirectionPtr.Left || edge === DirectionPtr.Right;
     for (const codel of Array.from(colorBlock.codels)) {
-      if (this.getCodelVal(codel, xAxis) === edgeBound) edgeCodels.push(codel);
+      if (codel.getMainAxisCoord(edge) === edgeBound) edgeCodels.push(codel);
     }
 
     let minCodel = new Codel(-1, -1);
     let maxCodel = new Codel(-1, -1);
     for (const codel of edgeCodels) {
-      const val = this.getCodelVal(codel, !xAxis);
-      const minVal = this.getCodelVal(minCodel, !xAxis);
-      const maxVal = this.getCodelVal(maxCodel, !xAxis);
+      const val = codel.getCrossAxisCoord(edge);
+      const minVal = minCodel.getCrossAxisCoord(edge);
+      const maxVal = maxCodel.getCrossAxisCoord(edge);
       if (minVal < 0 || val <= minVal) minCodel = codel;
       if (maxVal < 0 || val >= maxVal) maxCodel = codel;
     }
@@ -554,26 +543,19 @@ export class PietInterpreter extends Interpreter {
     const rightCodel = flipMinMax ? nextMinCodel : nextMaxCodel;
 
     const edgeCCMap: Edge = new Map();
-    if (this.codelInBounds(leftCodel) && this.pixelColor(leftCodel) !== BLACK) {
+    if (this.codelInBounds(leftCodel)) {
       edgeCCMap.set(CodelChooser.Left, [
         this.codelToColorBlock.get(leftCodel.id)!,
         leftCodel,
       ]);
     }
-    if (
-      this.codelInBounds(rightCodel) &&
-      this.pixelColor(rightCodel) !== BLACK
-    ) {
+    if (this.codelInBounds(rightCodel)) {
       edgeCCMap.set(CodelChooser.Right, [
         this.codelToColorBlock.get(rightCodel.id)!,
         rightCodel,
       ]);
     }
     colorBlock.edges.set(edge, edgeCCMap);
-  }
-
-  getCodelVal(codel: Codel, xAxis: boolean = true) {
-    return xAxis ? codel.x : codel.y;
   }
 
   getNextCodel(codel: Codel, dp: DirectionPtr): Codel {
@@ -589,13 +571,16 @@ export class PietInterpreter extends Interpreter {
     }
   }
 
-  codelInBounds(codel: Codel): boolean {
+  codelInBounds(codel: Codel, blackInBounds: boolean = false): boolean {
     const xInBounds = codel.x >= 0 && codel.x < this.width;
     const yInBounds = codel.y >= 0 && codel.y < this.height;
-    return xInBounds && yInBounds;
+    if (xInBounds && yInBounds) {
+      return blackInBounds || this.codelColor(codel) !== BLACK;
+    }
+    return false;
   }
 
-  pixelColor(codel: Codel): string {
+  codelColor(codel: Codel) {
     return this.pixels[codel.y][codel.x];
   }
 }
