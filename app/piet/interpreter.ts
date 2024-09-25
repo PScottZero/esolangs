@@ -443,11 +443,13 @@ export class PietInterpreter extends Interpreter {
   }
 
   outNumber() {
-    this.appendOutput(this.pop().toString());
+    const val = this.pop();
+    if (val > 0) this.appendOutput(val.toString());
   }
 
   outChar() {
-    this.appendOutput(String.fromCharCode(this.pop()));
+    const val = this.pop();
+    if (val > 0) this.appendOutput(String.fromCharCode(val));
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

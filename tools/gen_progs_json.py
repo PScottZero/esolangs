@@ -8,7 +8,7 @@ folders = ["brainfuck", "piet"]
 
 defaults = {
     "brainfuck": "sierpinski.b",
-    "piet": "Piet-1.gif",
+    "piet": "hw1-1.gif",
 }
 
 programs_json = {}
