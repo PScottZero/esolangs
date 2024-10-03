@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import Button from "../button/button";
 import styles from "./sidebar.module.scss";
 
-const ESOLANGS = ["Brainfuck", "Piet"];
+const ESOLANGS = ["Brainfuck", "Piet", "Whitespace"];
+
+const LABEL_SIZE = new Map<string, string>([["Whitespace", "13px"]]);
 
 export default function Sidebar() {
   const router = useRouter();
@@ -23,7 +25,9 @@ export default function Sidebar() {
             width={128}
             height={96}
           />
-          <p>{esolang}</p>
+          <p style={{ fontSize: LABEL_SIZE.get(esolang) ?? undefined }}>
+            {esolang}
+          </p>
         </div>
       </Button>,
     );
