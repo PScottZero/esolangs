@@ -426,20 +426,11 @@ export class PietInterpreter extends Interpreter {
   }
 
   inNumber() {
-    if (this.inputPtr < this.input.length) {
-      this.push(parseInt(this.input.trim()));
-      this.inputPtr = this.input.length;
-    } else if (this.cliMode) {
-      this.waitingForInput = true;
-    }
+    this.readInputNumber((num) => this.push(num));
   }
 
   inChar() {
-    if (this.inputPtr < this.input.length) {
-      this.push(this.input.at(this.inputPtr++)!.charCodeAt(0));
-    } else if (this.cliMode) {
-      this.waitingForInput = true;
-    }
+    this.readInputChar((ch) => this.push(ch));
   }
 
   outNumber() {

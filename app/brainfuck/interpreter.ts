@@ -113,12 +113,7 @@ export class BrainfuckInterpreter extends Interpreter {
   }
 
   in() {
-    if (this.inputPtr < this.input.length) {
-      this.data[this.dataPtr] = this.input.charCodeAt(this.inputPtr++);
-    } else if (this.cliMode) {
-      console.log("waiting for input");
-      this.waitingForInput = true;
-    }
+    this.readInputChar((ch) => (this.data[this.dataPtr] = ch));
   }
 
   openBracket() {

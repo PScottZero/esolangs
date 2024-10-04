@@ -2,7 +2,13 @@ import { Interpreter } from "../interpreter";
 
 const HEAP_SIZE = 0x10000;
 const CMDS_PER_MS = 512;
-const PROG_CHARS = [" ", "\t", "\n"];
+const PROG_CHARS = " \t\n";
+
+const IO_IMP = "\t\n";
+const IN_CHAR_OP = "\t ";
+const IN_NUM_OP = "\t\t";
+const OUT_CHAR_OP = "  ";
+const OUT_NUM_OP = " \t";
 
 const STACK_IMP = " ";
 const PUSH_OP = " ";
@@ -32,12 +38,6 @@ const JUMP_NEG_OP = "\t\t";
 const RET_OP = "\t\n";
 const END_OP = "\n\n";
 
-const IO_IMP = "\t\n";
-const OUT_CHAR_OP = "  ";
-const OUT_NUM_OP = " \t";
-const READ_CHAR_OP = "\t ";
-const READ_NUM_OP = "\t\t";
-
 const IMPS = [STACK_IMP, ARITH_IMP, HEAP_IMP, FLOW_IMP, IO_IMP];
 
 const INSTRS_WITH_PARAM = [
@@ -58,6 +58,7 @@ export class WhitespaceInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+  heap: number[] = [];
   stack: number[] = [];
 
   program: string = "";
@@ -76,6 +77,7 @@ export class WhitespaceInterpreter extends Interpreter {
   async run(program: string, cliMode: boolean = true) {
     if (this.running) await this.stop();
 
+    this.heap = new Array(HEAP_SIZE).fill(0);
     this.stack = [];
 
     this.program = program;
@@ -89,20 +91,20 @@ export class WhitespaceInterpreter extends Interpreter {
     const [imp, op, param] = this.readCmd();
 
     switch (imp) {
+      case IO_IMP:
+        this.ioImp(op);
+        break;
       case STACK_IMP:
         this.stackImp(op, param);
         break;
       case ARITH_IMP:
         this.arithmeticImp(op);
         break;
-      case HEAP_IMP:
-        this.heapImp(op);
-        break;
       case FLOW_IMP:
         this.flowControlImp(op);
         break;
-      case IO_IMP:
-        this.ioImp(op);
+      case HEAP_IMP:
+        this.heapImp(op);
         break;
       default:
         this.running = false;
@@ -173,6 +175,23 @@ export class WhitespaceInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+  ioImp(op: string) {
+    switch (op) {
+      case IN_CHAR_OP:
+        this.inChar();
+        break;
+      case IN_NUM_OP:
+        this.inNumber();
+        break;
+      case OUT_CHAR_OP:
+        this.outChar();
+        break;
+      case OUT_NUM_OP:
+        this.outNumber();
+        break;
+    }
+  }
+
   stackImp(op: string, param: string) {
     switch (op) {
       case PUSH_OP:
@@ -216,15 +235,6 @@ export class WhitespaceInterpreter extends Interpreter {
     }
   }
 
-  heapImp(op: string) {
-    switch (op) {
-      case " ":
-        break;
-      case "\t":
-        break;
-    }
-  }
-
   flowControlImp(op: string) {
     switch (op) {
       case "  ":
@@ -244,17 +254,45 @@ export class WhitespaceInterpreter extends Interpreter {
     }
   }
 
-  ioImp(op: string) {
+  heapImp(op: string) {
     switch (op) {
-      case "  ":
+      case STORE_OP:
+        this.store();
         break;
-      case " \t":
-        break;
-      case "\t ":
-        break;
-      case "\t\t":
+      case RETRV_OP:
+        this.retrieve();
         break;
     }
+  }
+
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // IO Instructions
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  inChar() {
+    this.readInputChar((ch) => {
+      const addr = this.stack.pop() ?? 0;
+      this.heap[addr] = ch;
+    });
+  }
+
+  inNumber() {
+    this.readInputNumber((num) => {
+      const addr = this.stack.pop() ?? 0;
+      this.heap[addr] = num;
+    });
+  }
+
+  outChar() {
+    const addr = this.stack.pop() ?? 0;
+    this.appendOutput(String.fromCharCode(this.heap[addr]));
+  }
+
+  outNumber() {
+    const addr = this.stack.pop() ?? 0;
+    this.appendOutput(this.heap[addr].toString());
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -327,13 +365,33 @@ export class WhitespaceInterpreter extends Interpreter {
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // Heap Instructions
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  store() {
+    const val = this.stack.pop() ?? 0;
+    const addr = this.stack.pop() ?? 0;
+    this.heap[addr] = val;
+  }
+
+  retrieve() {
+    const addr = this.stack.pop() ?? 0;
+    this.stack.push(this.heap[addr]);
+  }
+
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // Helper Functions
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   parseNumber(num: string): number {
-    const isPos = num[0] === " " ? true : false;
-    const mag = num.substring(1).trim();
-    for (let i = 0; i < mag.length; i++) {}
+    let mag = 0;
+    const magBinary = num.substring(1).trim();
+    for (let i = 0; i < magBinary.length; i++) {
+      if (magBinary[i] === "\t") mag += Math.pow(2, magBinary.length - i - 1);
+    }
+    return num[0] === " " ? mag : -mag;
   }
 }

@@ -97,6 +97,26 @@ export abstract class Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+  readInputChar(setDest: (ch: number) => void) {
+    if (this.inputPtr < this.input.length) {
+      setDest(this.input.charCodeAt(this.inputPtr++));
+    } else if (this.cliMode) {
+      console.log("waiting for input");
+      this.waitingForInput = true;
+    }
+  }
+
+  readInputNumber(setDest: (num: number) => void) {
+    let num = "";
+    let numLen = 0;
+
+    do {
+      this.readInputChar((ch) => (num += String.fromCharCode(ch)));
+    } while (numLen++ < num.length);
+
+    if (num.length > 0) setDest(parseInt(num.trim()));
+  }
+
   setInput() {
     if (!this.inputValid()) {
       this.ioEl!.value = this.io;
