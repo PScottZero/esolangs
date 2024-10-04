@@ -10,3 +10,27 @@
   gap: $gap-size;
   padding: $gap-size;
 }
+
+.programContainer {
+  position: relative;
+  height: 100%;
+  background: $white;
+  padding: 0.5rem;
+
+  textarea {
+    z-index: 2;
+    position: relative;
+    background: transparent;
+    padding: 0;
+  }
+}
+
+.highlights {
+  z-index: 1;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  font-size: 1rem;
+  font-family: monospace;
+  text-wrap: nowrap;
+}

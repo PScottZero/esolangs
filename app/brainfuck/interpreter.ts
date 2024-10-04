@@ -109,11 +109,11 @@ export class BrainfuckInterpreter extends Interpreter {
   }
 
   out() {
-    this.appendOutput(String.fromCharCode(this.data[this.dataPtr]));
+    this._outChar(this.data[this.dataPtr]);
   }
 
   in() {
-    this.readInputChar((ch) => (this.data[this.dataPtr] = ch));
+    this._inChar((ch) => (this.data[this.dataPtr] = ch));
   }
 
   openBracket() {

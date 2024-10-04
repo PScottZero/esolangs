@@ -61,6 +61,8 @@
       "hw6.png",
       "ILoveYouLaura.png",
       "japh.png",
+      "japh1.png",
+      "japh2.png",
       "Matter_4.png",
       "Piet-1.gif",
       "piet_bfi.gif",
@@ -70,12 +72,23 @@
       "piet_pi.png",
       "pietquest.png",
       "power2.png",
+      "primetest.png",
       "primetest2.png",
       "quine1.png",
       "quine2.png",
       "rockpaperscissors.png",
       "sortgnu.png",
       "tetris.png"
+    ]
+  },
+  "whitespace": {
+    "path": "/esolangs/bin/whitespace",
+    "default": "/esolangs/bin/whitespace/hello_world.ws",
+    "programs": [
+      "fizzbuzz.ws",
+      "hello_world.ws",
+      "print_primes.ws",
+      "tictactoe.ws"
     ]
   }
 }

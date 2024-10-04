@@ -12,10 +12,11 @@ import styles from "./page.module.scss";
 
 const DEFAULT_ZOOM = 8;
 const DEFAULT_PROG_SIZE = 16;
-const MIN_ZOOM = 1;
+const MIN_ZOOM = 3;
 const MAX_ZOOM = 50;
 const MAX_CANVAS_PXS = 4096 * 4096;
 const CANVAS_PADDING = 128;
+const GRID_LINE_WIDTH = 0.5;
 
 function initProgram(
   width: number = DEFAULT_PROG_SIZE,
@@ -73,6 +74,12 @@ function ColorChooser(
   );
 }
 
+function invertColor(hex: string): string {
+  let c = parseInt(hex.replace("#", ""), 16);
+  c = 0xffffff - c;
+  return "#" + c.toString(16).padStart(6, "0");
+}
+
 class CanvasRefs {
   canvasEl: HTMLCanvasElement | null = null;
   canvasContainerEl: HTMLDivElement | null = null;
@@ -101,13 +108,15 @@ export default function Piet() {
   const pietRef = useRef(new PietInterpreter(setRunning));
 
   const drawPixel = (x: number, y: number) => {
-    const zoom = canvasRefs.current.zoom;
     const ctx = canvasRefs.current.canvasEl!.getContext("2d")!;
-    ctx.fillStyle = canvasRefs.current.program[y][x];
+    const zoom = canvasRefs.current.zoom;
+    const fill = canvasRefs.current.program[y][x];
+
+    ctx.fillStyle = fill;
     ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
     if (canvasRefs.current.showGrid) {
-      ctx.strokeStyle = "#7f7f7f";
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = GRID_LINE_WIDTH;
+      ctx.strokeStyle = invertColor(fill);
       ctx.strokeRect(x * zoom, y * zoom, zoom, zoom);
     }
   };

@@ -426,21 +426,19 @@ export class PietInterpreter extends Interpreter {
   }
 
   inNumber() {
-    this.readInputNumber((num) => this.push(num));
+    this._inNumber((num) => this.push(num));
   }
 
   inChar() {
-    this.readInputChar((ch) => this.push(ch));
+    this._inChar((ch) => this.push(ch));
   }
 
   outNumber() {
-    const val = this.pop();
-    if (val > 0) this.appendOutput(val.toString());
+    this._outNumber(this.pop());
   }
 
   outChar() {
-    const val = this.pop();
-    if (val > 0) this.appendOutput(String.fromCharCode(val));
+    this._outChar(this.pop());
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

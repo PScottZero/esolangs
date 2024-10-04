@@ -4,11 +4,12 @@ import json
 
 root_path = f"public/bin"
 root_url = "/esolangs/bin"
-folders = ["brainfuck", "piet"]
+folders = ["brainfuck", "piet", "whitespace"]
 
 defaults = {
     "brainfuck": "sierpinski.b",
     "piet": "hw1-1.gif",
+    "whitespace": "hello_world.ws",
 }
 
 programs_json = {}

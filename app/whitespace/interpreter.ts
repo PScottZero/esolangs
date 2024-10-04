@@ -2,7 +2,7 @@ import { Interpreter } from "../interpreter";
 
 const HEAP_SIZE = 0x10000;
 const CMDS_PER_MS = 512;
-const PROG_CHARS = " \t\n";
+const CMD_CHARS = " \t\n";
 
 const IO_IMP = "\t\n";
 const IN_CHAR_OP = "\t ";
@@ -159,7 +159,7 @@ export class WhitespaceInterpreter extends Interpreter {
   }
 
   readProgChar(): string {
-    while (!(PROG_CHARS.includes(this.program[this.progPtr]) || this.eof())) {
+    while (!(CMD_CHARS.includes(this.program[this.progPtr]) || this.eof())) {
       this.progPtr++;
     }
     return this.program.at(this.progPtr++) ?? "";
@@ -272,14 +272,14 @@ export class WhitespaceInterpreter extends Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   inChar() {
-    this.readInputChar((ch) => {
+    this._inChar((ch) => {
       const addr = this.stack.pop() ?? 0;
       this.heap[addr] = ch;
     });
   }
 
   inNumber() {
-    this.readInputNumber((num) => {
+    this._inNumber((num) => {
       const addr = this.stack.pop() ?? 0;
       this.heap[addr] = num;
     });
@@ -287,12 +287,12 @@ export class WhitespaceInterpreter extends Interpreter {
 
   outChar() {
     const addr = this.stack.pop() ?? 0;
-    this.appendOutput(String.fromCharCode(this.heap[addr]));
+    this._outChar(this.heap[addr]);
   }
 
   outNumber() {
     const addr = this.stack.pop() ?? 0;
-    this.appendOutput(this.heap[addr].toString());
+    this._outNumber(this.heap[addr]);
   }
 
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

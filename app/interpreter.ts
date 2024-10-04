@@ -97,7 +97,7 @@ export abstract class Interpreter {
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  readInputChar(setDest: (ch: number) => void) {
+  _inChar(setDest: (ch: number) => void) {
     if (this.inputPtr < this.input.length) {
       setDest(this.input.charCodeAt(this.inputPtr++));
     } else if (this.cliMode) {
@@ -106,15 +106,28 @@ export abstract class Interpreter {
     }
   }
 
-  readInputNumber(setDest: (num: number) => void) {
+  _inNumber(setDest: (num: number) => void) {
     let num = "";
     let numLen = 0;
 
     do {
-      this.readInputChar((ch) => (num += String.fromCharCode(ch)));
+      this._inChar((ch) => (num += String.fromCharCode(ch)));
     } while (numLen++ < num.length);
 
     if (num.length > 0) setDest(parseInt(num.trim()));
+  }
+
+  _outChar(ch: number) {
+    const isControlChar = ch === 9 || ch === 10 || ch === 13;
+    const isPrintableAscii = ch >= 32 && ch <= 126;
+    const isPrintableExtAscii = ch >= 160 && ch <= 255;
+    if (isControlChar || isPrintableAscii || isPrintableExtAscii) {
+      this.appendOutput(String.fromCharCode(ch));
+    }
+  }
+
+  _outNumber(num: number) {
+    this.appendOutput(num.toString());
   }
 
   setInput() {
