@@ -45,7 +45,7 @@ export default function Brainfuck() {
           newAction("Save", () => saveTextFile("program.b", getProgram())),
         ]}
       >
-        <textarea ref={programRef} className={styles.textArea} name="editor" />
+        <textarea ref={programRef} name="editor" />
       </Window>
       <Programs
         programs={programsJson.brainfuck.programs}

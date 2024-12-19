@@ -110,7 +110,7 @@ export class WhitespaceInterpreter extends Interpreter {
         this.running = false;
         break;
     }
-    // if (!this.waitingForInput) this.progPtr++;
+    if (!this.waitingForInput) this.progPtr++;
   }
 
   readCmd(): [string, string, string] {

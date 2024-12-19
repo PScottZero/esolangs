@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import programsJson from "../../public/programs.json";
 import { newAction } from "../.components/action/action";
@@ -14,81 +14,68 @@ import {
 import { WhitespaceInterpreter } from "./interpreter";
 import styles from "./page.module.scss";
 
-export default function Piet() {
+const KEY_TO_CHAR = new Map([
+  [" ", " "],
+  ["Tab", "\t"],
+  ["Enter", "\n"],
+  ["Backspace", "<"],
+]);
+
+export default function Whitespace() {
   const [running, setRunning] = useState(false);
   const [cliMode, setCliMode] = useState(true);
 
   const programRef = useRef<HTMLTextAreaElement>(null);
-  const highlightsRef = useRef<HTMLDivElement>(null);
   const whitespaceRef = useRef(new WhitespaceInterpreter(setRunning));
 
   const getProgram = (): string => programRef.current!.value;
+
   const setProgram = (program: string) => {
-    programRef.current!.value = program;
-    highlightCmdChars();
-  };
-
-  const highlightCmdChars = () => {
-    const program = getProgram();
-
-    highlightsRef.current!.innerHTML = "";
+    programRef.current!.value = "";
     for (const ch of program) {
-      const span = document.createElement("span");
-
-      if (ch === " ") {
-        span.innerHTML = "&nbsp;";
-        span.style.background = "blue";
-      } else if (ch === "\t") {
-        span.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;";
-        span.style.background = "orange";
-      } else if (ch === "\n") {
-        span.style.background = "transparent";
-        span.innerHTML = "<br>";
-      } else {
-        span.style.background = "transparent";
-        span.innerHTML = ch;
-      }
-      highlightsRef.current!.appendChild(span);
+      programRef.current!.value += ch === " " ? "█" : ch === "\t" ? "▒" : ch;
     }
-
-    // programRef.current!.value = programRef
-    //   .current!.value.replaceAll("\t", "[T]")
-    //   .replaceAll("\n", "[N]\n")
-    //   .replaceAll(" ", " ");
   };
 
-  const keydownListener = (e: KeyboardEvent) => {
-    e.preventDefault();
-    console.log(e.key);
-    switch (e.key) {
-      case "Tab":
-        programRef.current!.value += "\t";
-        break;
-      case " ":
-        programRef.current!.value += " ";
-        break;
-      case "Enter":
-        programRef.current!.value += "\n";
-        break;
-      case "Backspace":
-        programRef.current!.value = programRef.current!.value.substring(
-          0,
-          programRef.current!.value.length - 1,
-        );
-        break;
+  const runProgram = () => {
+    let program = "";
+    for (const ch of getProgram()) {
+      program += ch === "█" ? " " : ch === "▒" ? "\t" : ch;
     }
-    highlightCmdChars();
+    whitespaceRef.current.run(program, cliMode);
+  };
+
+  const keyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+
+    const textArea = programRef.current!;
+    const start = textArea.selectionStart;
+    const end = textArea.selectionEnd;
+
+    const program = getProgram();
+    const programStart = program.substring(0, start);
+    const programEnd = program.substring(end);
+
+    const ch = KEY_TO_CHAR.get(e.key) ?? "";
+    if (ch === "<") {
+      if (start === end) {
+        setProgram(programStart.substring(0, start - 1) + programEnd);
+        textArea.selectionEnd = start - 1;
+      } else {
+        setProgram(programStart + programEnd);
+        textArea.selectionEnd = start;
+      }
+    } else if (ch !== "") {
+      setProgram(programStart + ch + programEnd);
+      textArea.selectionEnd = start + 1;
+    }
   };
 
   useEffect(() => {
     readTextFileFromServer(programsJson.whitespace.default, (result) => {
       setProgram(result);
-      whitespaceRef.current.run(result, cliMode);
+      runProgram();
     });
-    programRef.current!.addEventListener("keydown", keydownListener);
-    return () => {
-      programRef.current!.removeEventListener("keydown", keydownListener);
-    };
   }, []);
 
   return (
@@ -98,22 +85,13 @@ export default function Piet() {
         icon="editor.png"
         gridArea="editor"
         actions={[
-          newAction("Run", () =>
-            whitespaceRef.current.run(getProgram(), cliMode),
-          ),
+          newAction("Run", runProgram),
           newAction("Stop", () => whitespaceRef.current.stop(), !running),
           newAction("Load", () => whitespaceRef.current.load()),
           newAction("Save", () => saveTextFile("program.ws", getProgram())),
         ]}
       >
-        <div className={styles.programContainer}>
-          <div ref={highlightsRef} className={styles.highlights} />
-          <textarea
-            ref={programRef}
-            className={styles.textArea}
-            name="editor"
-          />
-        </div>
+        <textarea name="editor" ref={programRef} onKeyDown={keyDown} />
       </Window>
       <Programs
         programs={programsJson.whitespace.programs}
